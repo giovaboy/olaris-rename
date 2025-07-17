@@ -108,8 +108,14 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 					} else {
 						log.Debugln("We already have found a season earlier so skipping the normal season match.")
 					}
+				//case "episode":
+				//	f.Episode = fmt.Sprintf("%02s", res[1])
 				case "episode":
-					f.Episode = fmt.Sprintf("%02s", res[1])
+                    if len(res) > 2 && res[2] != "" {
+                        f.Episode = fmt.Sprintf("%02s-%02s", res[1], res[2])
+                    } else {
+                        f.Episode = fmt.Sprintf("%02s", res[1])
+                    }
 				case "quality":
 					f.Quality = res[1]
 				case "resolution":
@@ -269,16 +275,43 @@ func queryTmdb(p *ParsedFile) error {
 
 			// Retrive Episode Name
 			seasonNum, err := strconv.Atoi(p.Season)
-			episodeNum ,err := strconv.Atoi(p.Episode)
-			tvEpisode, err := agent.GetTvEpisodeInfo(tv.ID, seasonNum, episodeNum, options)
+			//episodeNum ,err := strconv.Atoi(p.Episode)
+			//tvEpisode, err := agent.GetTvEpisodeInfo(tv.ID, seasonNum, episodeNum, options)
+			episodeNums := strings.Split(p.Episode, "-")
+episodeTitles := []string{}
+
+for _, epStr := range episodeNums {
+    epNum, err := strconv.Atoi(epStr)
+    if err != nil {
+        log.WithFields(log.Fields{"epStr": epStr}).Warnln("Could not convert episode number")
+        continue
+    }
+
+    tvEpisode, err := agent.GetTvEpisodeInfo(tv.ID, seasonNum, epNum, options)
+    if err != nil {
+        log.WithFields(log.Fields{"epNum": epNum, "error": err}).Warnln("Got an error from TMDB")
+        continue
+    }
+
+    if len(tvEpisode.Name) > 0 {
+        log.Debugln("tvEpisodeInfo", tvEpisode)
+        episodeTitles = append(episodeTitles, tvEpisode.Name)
+    }
+}
 			if err != nil {
                         	log.WithFields(log.Fields{"name": p.CleanName, "error": err}).Warnln("Got an error from TMDB")
                         	return err
                 	}
-			if len(tvEpisode.Name) > 0 {
-				log.Debugln("tvEpisodeInfo", tvEpisode)
-				p.EpisodeName = tvEpisode.Name
-			}
+			//if len(tvEpisode.Name) > 0 {
+			//	log.Debugln("tvEpisodeInfo", tvEpisode)
+			//	p.EpisodeName = tvEpisode.Name
+			//}
+			
+			if len(episodeTitles) > 0 {
+                p.EpisodeName = strings.Join(episodeTitles, " / ")
+            }
+			
+			
 
 		} else {
 			log.Debugln("No results found on TMDB")
