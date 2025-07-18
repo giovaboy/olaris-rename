@@ -308,7 +308,7 @@ for _, epStr := range episodeNums {
 			//}
 			
 			if len(episodeTitles) > 0 {
-                p.EpisodeName = strings.Join(episodeTitles, " / ")
+                p.EpisodeName = strings.Join(episodeTitles, " - ")
             }
 			
 			
