@@ -75,6 +75,64 @@ func getOpts(o []Options) (opts Options) {
 	return opts
 }
 
+// EpisodeInfo holds parsed episode number(s)
+type EpisodeInfo struct {
+	Start   int
+	End     int
+	IsRange bool
+}
+
+// ParseEpisodeString parses episode patterns like:
+// - "22" → {Start: 22, End: 22, IsRange: false}
+// - "22-23" → {Start: 22, End: 23, IsRange: true}
+// - "E22" → {Start: 22, End: 22, IsRange: false}
+// - "E22E23" → {Start: 22, End: 23, IsRange: true}
+// - "22E23" → {Start: 22, End: 23, IsRange: true}
+func ParseEpisodeString(epStr string) (*EpisodeInfo, error) {
+	if epStr == "" {
+		return nil, fmt.Errorf("empty episode string")
+	}
+
+	epStr = strings.TrimSpace(epStr)
+
+	// Regex to match: optional 'E', digits, optional separator (dash/E), and more digits
+	// Groups: (1) first episode number, (2) second episode number (if present)
+	pattern := regexp.MustCompile(`^E?(\d+)(?:[E\-]*E?(\d+))?$`)
+	matches := pattern.FindStringSubmatch(epStr)
+
+	if matches == nil {
+		return nil, fmt.Errorf("invalid episode format: %s", epStr)
+	}
+
+	start, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return nil, fmt.Errorf("could not parse start episode: %s", matches[1])
+	}
+
+	info := &EpisodeInfo{
+		Start:   start,
+		End:     start,
+		IsRange: false,
+	}
+
+	// If there's a second episode number, it's a range
+	if len(matches) > 2 && matches[2] != "" {
+		end, err := strconv.Atoi(matches[2])
+		if err != nil {
+			return nil, fmt.Errorf("could not parse end episode: %s", matches[2])
+		}
+
+		if start > end {
+			return nil, fmt.Errorf("start episode (%d) cannot be greater than end episode (%d)", start, end)
+		}
+
+		info.End = end
+		info.IsRange = true
+	}
+
+	return info, nil
+}
+
 func NewParsedFile(filePath string, o ...Options) ParsedFile {
 	opts := getOpts(o)
 	log.WithField("options", opts.String()).Debugln("Parsing filename with options")
@@ -108,14 +166,21 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 					} else {
 						log.Debugln("We already have found a season earlier so skipping the normal season match.")
 					}
-				//case "episode":
-				//	f.Episode = fmt.Sprintf("%02s", res[1])
 				case "episode":
-                    if len(res) > 2 && res[2] != "" {
-                        f.Episode = fmt.Sprintf("%02s-%02s", res[1], res[2])
-                    } else {
-                        f.Episode = fmt.Sprintf("%02s", res[1])
-                    }
+					// IMPROVED: Parse the raw episode string (could be "22", "22E23", "E22E23", etc.)
+					episodeInfo, err := ParseEpisodeString(res[1])
+					if err != nil {
+						log.WithFields(log.Fields{"raw": res[1], "error": err}).Debugln("Could not parse episode string")
+						// Fallback: just format the raw string
+						f.Episode = fmt.Sprintf("%02s", res[1])
+					} else {
+						// Format properly: "22" for single or "22-23" for range
+						if episodeInfo.IsRange {
+							f.Episode = fmt.Sprintf("%02d-%02d", episodeInfo.Start, episodeInfo.End)
+						} else {
+							f.Episode = fmt.Sprintf("%02d", episodeInfo.Start)
+						}
+					}
 				case "quality":
 					f.Quality = res[1]
 				case "resolution":
@@ -179,7 +244,6 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 			if f.AnimeGroup == "" {
 				log.WithField("cleanName", cleanName).Debugln("Probably not Anime so cleaning a bit more.")
 				cleanName = regexp.MustCompile(`\s{2,}.*`).ReplaceAllString(cleanName, "")
-				//cleanName = strings.Trim(cleanName, " -")
 				cleanName = cases.Title(language.English).String(cleanName)
 			}
 		}
@@ -202,7 +266,7 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 		// Translate season as year to season number
 		agent := initAgent()
 		opzioni := make(map[string]string)
-                opzioni["language"] = "it"
+		opzioni["language"] = "it"
 		details, err := agent.GetTvInfo(f.ExternalID, opzioni)
 		if err != nil {
 			log.Errorln("Could not locate TV even though we just found an external ID, this shouldn't be possible. Error:", err)
@@ -249,7 +313,7 @@ func queryTmdb(p *ParsedFile) error {
 	agent := initAgent()
 
 	var options = make(map[string]string)
-        options["language"] = "it"
+	options["language"] = "it"
 	if p.Year != "" {
 		options["first_air_date_year"] = p.Year
 		options["year"] = p.Year
@@ -273,46 +337,54 @@ func queryTmdb(p *ParsedFile) error {
 				p.Year = strings.Split(tv.FirstAirDate, "-")[0]
 			}
 
-			// Retrive Episode Name
+			// IMPROVED: Retrieve Episode Name(s) for single or multiple episodes
 			seasonNum, err := strconv.Atoi(p.Season)
-			//episodeNum ,err := strconv.Atoi(p.Episode)
-			//tvEpisode, err := agent.GetTvEpisodeInfo(tv.ID, seasonNum, episodeNum, options)
-			episodeNums := strings.Split(p.Episode, "-")
-episodeTitles := []string{}
-
-for _, epStr := range episodeNums {
-    epNum, err := strconv.Atoi(epStr)
-    if err != nil {
-        log.WithFields(log.Fields{"epStr": epStr}).Warnln("Could not convert episode number")
-        continue
-    }
-
-    tvEpisode, err := agent.GetTvEpisodeInfo(tv.ID, seasonNum, epNum, options)
-    if err != nil {
-        log.WithFields(log.Fields{"epNum": epNum, "error": err}).Warnln("Got an error from TMDB")
-        continue
-    }
-
-    if len(tvEpisode.Name) > 0 {
-        log.Debugln("tvEpisodeInfo", tvEpisode)
-        episodeTitles = append(episodeTitles, tvEpisode.Name)
-    }
-}
 			if err != nil {
-                        	log.WithFields(log.Fields{"name": p.CleanName, "error": err}).Warnln("Got an error from TMDB")
-                        	return err
-                	}
-			//if len(tvEpisode.Name) > 0 {
-			//	log.Debugln("tvEpisodeInfo", tvEpisode)
-			//	p.EpisodeName = tvEpisode.Name
-			//}
-			
-			if len(episodeTitles) > 0 {
-                p.EpisodeName = strings.Join(episodeTitles, " - ")
-            }
-			
-			
+				log.WithFields(log.Fields{"season": p.Season, "error": err}).Warnln("Could not convert season to int")
+				return err
+			}
 
+			// Parse the episode string to handle ranges properly
+			episodeInfo, err := ParseEpisodeString(p.Episode)
+			if err != nil {
+				log.WithFields(log.Fields{"episode": p.Episode, "error": err}).Warnln("Could not parse episode string")
+				// Continue anyway, we can still try with just the first part
+				episodeInfo = &EpisodeInfo{Start: 1, End: 1, IsRange: false}
+			}
+
+			// Fetch episode names for all episodes in the range
+			episodeTitles := []string{}
+			for episodeNum := episodeInfo.Start; episodeNum <= episodeInfo.End; episodeNum++ {
+				log.WithFields(log.Fields{
+					"series":  p.CleanName,
+					"season":  seasonNum,
+					"episode": episodeNum,
+				}).Debugln("Fetching episode info from TMDB")
+
+				tvEpisode, err := agent.GetTvEpisodeInfo(tv.ID, seasonNum, episodeNum, options)
+				if err != nil {
+					log.WithFields(log.Fields{
+						"season":  seasonNum,
+						"episode": episodeNum,
+						"error":   err,
+					}).Debugln("Could not fetch episode from TMDB")
+					continue
+				}
+
+				if len(tvEpisode.Name) > 0 {
+					log.WithFields(log.Fields{
+						"season":  seasonNum,
+						"episode": episodeNum,
+						"name":    tvEpisode.Name,
+					}).Debugln("Retrieved episode info from TMDB")
+					episodeTitles = append(episodeTitles, tvEpisode.Name)
+				}
+			}
+
+			// Join episode names if multiple episodes (use " & " separator)
+			if len(episodeTitles) > 0 {
+				p.EpisodeName = strings.Join(episodeTitles, " & ")
+			}
 		} else {
 			log.Debugln("No results found on TMDB")
 		}
@@ -325,7 +397,6 @@ for _, epStr := range episodeNums {
 		}
 
 		if len(searchRes.Results) > 0 {
-
 			mov := searchRes.Results[0] // Take the first result for now
 			log.Debugln("Movie:", mov)
 
