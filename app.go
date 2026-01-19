@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"encoding/json"
 
 	"github.com/mholt/archiver/v3"
 	log "github.com/sirupsen/logrus"
@@ -32,6 +33,23 @@ type App struct {
 	skipExtracting bool
 	forceMovie     bool
 	forceSeries    bool
+}
+
+type ActionResult struct {
+	ExternalID   int    `json:"externalID"`
+	ExternalName string `json:"externalName"`
+	CleanName    string `json:"cleanName"`
+	Year         string `json:"year"`
+	Season       string `json:"season"`
+	Episode      string `json:"episode"`
+	EpisodeName  string `json:"episodeName"`
+	Source       string `json:"source"`
+	Target       string `json:"target"`
+	Action       string `json:"action"`
+	IsMovie      bool   `json:"isMovie"`
+	IsSeries     bool   `json:"isSeries"`
+	Resolution   string `json:"resolution"`
+	Quality      string `json:"quality"`
 }
 
 var actions = map[string]bool{
@@ -256,6 +274,34 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 		}
 	} else {
 		log.WithFields(log.Fields{"target": targetLocation, "source": source, "action": action}).Infoln("--dry-run enabled, not acting on file")
+	}
+
+	if *jsonOutput {
+		result := ActionResult{
+			ExternalID:   p.ExternalID,
+			ExternalName: p.ExternalName,
+			CleanName:    p.CleanName,
+			Year:         p.Year,
+			Season:       p.Season,
+			Episode:      p.Episode,
+			EpisodeName:  p.EpisodeName,
+			Source:       source,
+			Target:       targetLocation,
+			Action:       action,
+			IsMovie:      p.IsMovie,
+			IsSeries:     p.IsSeries,
+			Resolution:   p.Resolution,
+			Quality:      p.Quality,
+		}
+		
+		jsonBytes, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			log.WithError(err).Error("Failed to marshal JSON output")
+			return err
+		}
+		
+		// Print to stdout (separate from logs)
+		fmt.Println(string(jsonBytes))
 	}
 
 	return nil
