@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
-	"gitlab.com/olaris/olaris-rename/identify"
+	"github.com/giovaboy/olaris-rename/identify"
 )
 
 func TestExtract(t *testing.T) {

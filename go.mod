@@ -1,4 +1,4 @@
-module gitlab.com/olaris/olaris-rename
+module github.com/giovaboy/olaris-rename
 
 go 1.18
 

@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"gitlab.com/olaris/olaris-rename/identify"
+	"github.com/giovaboy/olaris-rename/identify"
 )
 
 var recursive = flag.Bool("recursive", true, "Scan folders inside of other folders.")

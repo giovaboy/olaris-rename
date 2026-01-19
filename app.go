@@ -11,7 +11,7 @@ import (
 
 	"github.com/mholt/archiver/v3"
 	log "github.com/sirupsen/logrus"
-	"gitlab.com/olaris/olaris-rename/identify"
+	"github.com/giovaboy/olaris-rename/identify"
 )
 
 // NewApp creates a new environment
