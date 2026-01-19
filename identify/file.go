@@ -115,7 +115,8 @@ func ParseEpisodeString(epStr string) (*EpisodeInfo, error) {
 
 	// Regex to match: optional 'E', digits, optional separator (dash/E), and more digits
 	// Groups: (1) first episode number, (2) second episode number (if present)
-	pattern := regexp.MustCompile(`^E?(\d+)(?:[E\-]*E?(\d+))?$`)
+	//pattern := regexp.MustCompile(`^E?(\d+)(?:[E\-]*E?(\d+))?$`)
+	pattern := regexp.MustCompile(`^E?(\d+)(?:(?:-E?|E)(\d+))?$`)
 	matches := pattern.FindStringSubmatch(epStr)
 
 	if matches == nil {
@@ -186,9 +187,9 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 					}
 				case "episode":
 					// IMPROVED: Parse the raw episode string (could be "22", "22E23", "E22E23", etc.)
-					episodeInfo, err := ParseEpisodeString(res[1])
+					episodeInfo, err := ParseEpisodeString(res[0])
 					if err != nil {
-						log.WithFields(log.Fields{"raw": res[1], "error": err}).Debugln("Could not parse episode string")
+						log.WithFields(log.Fields{"raw": res[0], "error": err}).Debugln("Could not parse episode string")
 						// Fallback: just format the raw string
 						f.Episode = fmt.Sprintf("%02s", res[1])
 					} else {
@@ -291,7 +292,7 @@ if opts.ForceMovie {
 			if f.AnimeGroup == "" {
 				log.WithField("cleanName", cleanName).Debugln("Probably not Anime so cleaning a bit more.")
 				cleanName = regexp.MustCompile(`\s{2,}.*`).ReplaceAllString(cleanName, "")
-				cleanName = cases.Title(language.English).String(cleanName)
+				cleanName = properTitleCase(cleanName)//cases.Title(language.English).String(cleanName)
 			}
 		}
 
@@ -515,4 +516,26 @@ func (p *ParsedFile) SeasonNum() (seasonNum int) {
 	}
 
 	return seasonNum
+}
+
+// properTitleCase converts a string to title case following English conventions
+// Small words (of, the, and, etc.) remain lowercase unless they're the first word
+func properTitleCase(s string) string {
+	smallWords := map[string]bool{
+		"a": true, "an": true, "and": true, "as": true, "at": true,
+		"but": true, "by": true, "for": true, "in": true, "of": true,
+		"on": true, "or": true, "the": true, "to": true, "via": true,
+	}
+	
+	words := strings.Fields(s)
+	for i, word := range words {
+		lower := strings.ToLower(word)
+		// First word or not a small word: capitalize
+		if i == 0 || !smallWords[lower] {
+			words[i] = cases.Title(language.English).String(lower)
+		} else {
+			words[i] = lower
+		}
+	}
+	return strings.Join(words, " ")
 }
