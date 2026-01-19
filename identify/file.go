@@ -200,20 +200,49 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 
 		if !f.IsMusic {
 			log.WithFields(log.Fields{"cleanName": cleanName, "year": f.Year, "episode": f.Episode, "season": f.Season}).Debugln("Pre-parsing done, initial result.")
-			if opts.ForceMovie || (f.Episode == "" && f.Season == "" && f.Year != "") {
-				f.IsMovie = true
-				log.Debugln("Identified file as a movie")
-			} else if opts.ForceSeries || (f.Episode != "" && f.Season != "") {
-				f.IsSeries = true
-				log.Debugln("Identified file as an episode")
-			} else {
-				fileParent := filepath.Base(filepath.Dir(filePath))
-				if fileParent != "" && opts.OriginalFile == "" && fileParent != "." {
-					log.WithFields(log.Fields{"file": f.Filename, "filePath": filePath, "fileParent": fileParent}).Warnln("Nothing sensible found, trying again with parent.")
-					opts.OriginalFile = filePath
-					return NewParsedFile(fileParent+f.Extension, opts)
-				}
-			}
+			// CORRECTED AUTO-DETECT LOGIC - Replace the section in your identify/file.go
+// Around line 100-130
+
+if opts.ForceMovie {
+    f.IsMovie = true
+    f.Episode = ""  // Clear false positives
+    f.Season = ""
+    log.Debugln("Identified file as a movie (forced)")
+} else if opts.ForceSeries {
+    f.IsSeries = true
+    log.Debugln("Identified file as a series (forced)")
+} else if f.Season != "" {
+    // If season is present, it's definitely a series
+    f.IsSeries = true
+    log.Debugln("Identified file as an episode (has season)")
+} else if f.Year != "" && f.Episode == "" {
+    // Year without episode = movie
+    f.IsMovie = true
+    log.Debugln("Identified file as a movie (has year, no episode)")
+} else if f.Year != "" && f.Episode != "" {
+    // Year AND episode (without season) = probably movie with false positive episode
+    // Log the false positive BEFORE clearing it
+    log.WithFields(log.Fields{
+        "falsePositiveEpisode": f.Episode,  // Log BEFORE clearing
+        "year": f.Year,
+    }).Debugln("Identified file as movie, cleared false positive episode")
+    f.IsMovie = true
+    f.Episode = ""  // Clear false positive AFTER logging
+    f.Season = ""
+} else if f.Episode != "" && f.Season != "" {
+    // Episode AND season (both present) = series
+    // This handles S##E## format correctly
+    f.IsSeries = true
+    log.Debugln("Identified file as an episode (has both season and episode)")
+} else {
+    // Nothing sensible found, try parent directory
+    fileParent := filepath.Base(filepath.Dir(filePath))
+    if fileParent != "" && opts.OriginalFile == "" && fileParent != "." {
+        log.WithFields(log.Fields{"file": f.Filename, "filePath": filePath, "fileParent": fileParent}).Warnln("Nothing sensible found, trying again with parent.")
+        opts.OriginalFile = filePath
+        return NewParsedFile(fileParent+f.Extension, opts)
+    }
+}
 
 			for _, match := range order {
 				res := matchers[match].FindStringSubmatch(cleanName)
