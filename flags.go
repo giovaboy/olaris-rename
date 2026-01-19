@@ -23,3 +23,4 @@ var seriesFormat = flag.String("series-format", identify.DefaultSeriesFormat, "F
 var movieFormat = flag.String("movie-format", identify.DefaultMovieFormat, "Format used to rename movies.")
 var forceMovie = flag.Bool("force-movie", false, "Forces the supplied path to be identified as a movie.")
 var forceSeries = flag.Bool("force-series", false, "Forces the supplied path to be identified as a series.")
+var jsonOutput = flag.Bool("json-output", false, "Output results as JSON.")
