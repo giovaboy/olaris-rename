@@ -6,9 +6,11 @@ import (
 	"github.com/ryanbradynd05/go-tmdb"
 )
 
+
 const tmdbAPIKey = "0cdacd9ab172ac6ff69c8d84b2c938a8"
 const DefaultMovieFormat = "{n} ({y})/{n} ({y}) {r}"
 const DefaultSeriesFormat = "{n}/Stagione {s}/{n} - S{s}E{e} - {x}{r}"
+const DefaultTMDBLanguage = "it"
 
 var addYearToSeries = map[string]bool{
 	"The Flash":   true,

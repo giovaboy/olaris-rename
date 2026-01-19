@@ -166,6 +166,7 @@ func TestLookup(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	moreTests := make(map[string]identify.ParsedFile)
 	opts := identify.GetDefaultOptions()
+	opts.TMDBLanguage = "en"
 
 	moreTests["The.Flash.2014.S06E07.720p.HDTV.x264-SVA.mkv"] = identify.ParsedFile{Options: opts, Filename: "The.Flash.2014.S06E07.720p.HDTV.x264-SVA", Extension: ".mkv", Filepath: "The.Flash.2014.S06E07.720p.HDTV.x264-SVA.mkv", Year: "2014", IsMovie: false, IsSeries: true, CleanName: "The Flash (2014)", Season: "06", Episode: "07", Resolution: "720p"}
 	moreTests["Charmed.1998.S01E01.mkv"] = identify.ParsedFile{Options: opts, Filename: "Charmed.1998.S01E01", Extension: ".mkv", Filepath: "Charmed.1998.S01E01.mkv", Year: "1998", IsMovie: false, IsSeries: true, CleanName: "Charmed (1998)", Season: "01", Episode: "01", Resolution: ""}
@@ -231,6 +232,7 @@ func TestYearSeasons(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	tests := make(map[string]identify.ParsedFile)
 	opts := identify.GetDefaultOptions()
+	opts.TMDBLanguage = "en"
 	opts.Lookup = true
 	tests["MythBusters.S2005E03.Brown.Note.mkv"] = identify.ParsedFile{Options: opts, Filename: "Mythbusters.S2005E03.Brown.Note", Extension: ".mkv", Filepath: "Mythbusters.S2005E03.Brown.Note.mkv", Year: "", IsSeries: true, CleanName: "MythBusters", Season: "3", Episode: "03"}
 

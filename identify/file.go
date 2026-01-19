@@ -50,10 +50,11 @@ type Options struct {
 	MovieFormat  string
 	SeriesFormat string
 	DryRun       bool
+	TMDBLanguage string
 }
 
 func (p *Options) String() string {
-	return fmt.Sprintf("Lookup: %v, ForceMovie: %v, ForceSeries: %v, OriginalFile: %s, MovieFormat: %s, SeriesFormat: %s, DryRun: %v", p.Lookup, p.ForceMovie, p.ForceSeries, p.OriginalFile, p.MovieFormat, p.SeriesFormat, p.DryRun)
+	return fmt.Sprintf("Lookup: %v, ForceMovie: %v, ForceSeries: %v, OriginalFile: %s, MovieFormat: %s, SeriesFormat: %s, DryRun: %v, TMDBLanguage: %s", p.Lookup, p.ForceMovie, p.ForceSeries, p.OriginalFile, p.MovieFormat, p.SeriesFormat, p.DryRun, p.TMDBLanguage)
 }
 
 func GetDefaultOptions() Options {
@@ -71,6 +72,9 @@ func getOpts(o []Options) (opts Options) {
 	}
 	if opts.SeriesFormat == "" {
 		opts.SeriesFormat = DefaultSeriesFormat
+	}
+	if opts.TMDBLanguage == "" {
+		opts.TMDBLanguage = DefaultTMDBLanguage
 	}
 	return opts
 }
@@ -295,7 +299,7 @@ if opts.ForceMovie {
 		// Translate season as year to season number
 		agent := initAgent()
 		opzioni := make(map[string]string)
-		opzioni["language"] = "it"
+		opzioni["language"] = p.Options.TMDBLanguage
 		details, err := agent.GetTvInfo(f.ExternalID, opzioni)
 		if err != nil {
 			log.Errorln("Could not locate TV even though we just found an external ID, this shouldn't be possible. Error:", err)
@@ -342,7 +346,7 @@ func queryTmdb(p *ParsedFile) error {
 	agent := initAgent()
 
 	var options = make(map[string]string)
-	options["language"] = "it"
+	options["language"] = p.Options.TMDBLanguage
 	if p.Year != "" {
 		options["first_air_date_year"] = p.Year
 		options["year"] = p.Year
