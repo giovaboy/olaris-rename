@@ -86,6 +86,20 @@ type EpisodeInfo struct {
 	IsRange bool
 }
 
+// GetFirstEpisodeForLookup returns the first episode number for TMDB lookup
+func (ei *EpisodeInfo) GetFirstEpisodeForLookup() int {
+	return ei.Start
+}
+
+// GetEpisodeRange returns a string representation of the episode range
+// Returns "22" for single episodes or "22-23" for ranges
+func (ei *EpisodeInfo) GetEpisodeRange() string {
+	if ei.IsRange {
+		return fmt.Sprintf("%d-%d", ei.Start, ei.End)
+	}
+	return fmt.Sprintf("%d", ei.Start)
+}
+
 // ParseEpisodeString parses episode patterns like:
 // - "22" → {Start: 22, End: 22, IsRange: false}
 // - "22-23" → {Start: 22, End: 23, IsRange: true}
