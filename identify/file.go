@@ -299,7 +299,7 @@ if opts.ForceMovie {
 		// Translate season as year to season number
 		agent := initAgent()
 		opzioni := make(map[string]string)
-		opzioni["language"] = p.Options.TMDBLanguage
+		opzioni["language"] = f.Options.TMDBLanguage
 		details, err := agent.GetTvInfo(f.ExternalID, opzioni)
 		if err != nil {
 			log.Errorln("Could not locate TV even though we just found an external ID, this shouldn't be possible. Error:", err)
