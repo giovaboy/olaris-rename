@@ -299,9 +299,17 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 			log.WithError(err).Error("Failed to marshal JSON output")
 			return err
 		}
-		
-		// Print to stdout (separate from logs)
-		fmt.Println(string(jsonBytes))
+		if *jsonOutputFile != "" {
+        err = os.WriteFile(*jsonOutputFile, jsonBytes, 0644)
+        if err != nil {
+            log.WithError(err).Errorf("Failed to write JSON to file: %s", *jsonOutputFile)
+            return err
+        }
+        log.WithField("file", *jsonOutputFile).Debug("JSON output written to file")
+    } else {
+        // Write to stdout with clear marker
+        fmt.Fprintf(os.Stdout, "JSON_RESULT:%s\n", string(jsonBytes))
+    }
 	}
 
 	return nil

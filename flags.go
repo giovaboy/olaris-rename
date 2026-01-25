@@ -24,3 +24,4 @@ var movieFormat = flag.String("movie-format", identify.DefaultMovieFormat, "Form
 var forceMovie = flag.Bool("force-movie", false, "Forces the supplied path to be identified as a movie.")
 var forceSeries = flag.Bool("force-series", false, "Forces the supplied path to be identified as a series.")
 var jsonOutput = flag.Bool("json-output", false, "Output results as JSON.")
+var jsonOutputFile = flag.String("json-output-file", "", "Write JSON output to file instead of stdout.")
