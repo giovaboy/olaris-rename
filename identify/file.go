@@ -186,20 +186,20 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 						log.Debugln("We already have found a season earlier so skipping the normal season match.")
 					}
 				case "episode":
-					// IMPROVED: Parse the raw episode string (could be "22", "22E23", "E22E23", etc.)
-					episodeInfo, err := ParseEpisodeString(res[0])
-					if err != nil {
-						log.WithFields(log.Fields{"raw": res[0], "error": err}).Debugln("Could not parse episode string")
-						// Fallback: just format the raw string
-						f.Episode = fmt.Sprintf("%02s", res[1])
-					} else {
-						// Format properly: "22" for single or "22-23" for range
-						if episodeInfo.IsRange {
-							f.Episode = fmt.Sprintf("%02d-%02d", episodeInfo.Start, episodeInfo.End)
-						} else {
-							f.Episode = fmt.Sprintf("%02d", episodeInfo.Start)
-						}
-					}
+		    // Parse the raw episode string (could be "22", "22E23", "E22E23", etc.)
+		    episodeInfo, err := ParseEpisodeString(res[0])
+		    if err != nil {
+		        log.WithFields(log.Fields{"raw": res[0], "error": err}).Debugln("Could not parse episode string")
+		        // Fallback: just format the raw string
+		        f.Episode = fmt.Sprintf("%02s", res[1])
+		    } else {
+		        // Format properly: "22" for single or "22-E23" for range (Plex format)
+		        if episodeInfo.IsRange {
+		            f.Episode = fmt.Sprintf("%02d-E%02d", episodeInfo.Start, episodeInfo.End)  // ← CORRETTO
+		        } else {
+		            f.Episode = fmt.Sprintf("%02d", episodeInfo.Start)
+		        }
+		    }
 				case "quality":
 					f.Quality = res[1]
 				case "resolution":
