@@ -186,20 +186,38 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 						log.Debugln("We already have found a season earlier so skipping the normal season match.")
 					}
 				case "episode":
-		    // Parse the raw episode string (could be "22", "22E23", "E22E23", etc.)
-		    episodeInfo, err := ParseEpisodeString(res[0])
-		    if err != nil {
-		        log.WithFields(log.Fields{"raw": res[0], "error": err}).Debugln("Could not parse episode string")
-		        // Fallback: just format the raw string
-		        f.Episode = fmt.Sprintf("%02s", res[1])
-		    } else {
-		        // Format properly: "22" for single or "22-E23" for range (Plex format)
-		        if episodeInfo.IsRange {
-		            f.Episode = fmt.Sprintf("%02d-E%02d", episodeInfo.Start, episodeInfo.End)  // ← CORRETTO
-		        } else {
-		            f.Episode = fmt.Sprintf("%02d", episodeInfo.Start)
-		        }
-		    }
+				// Parse the episode string using both the original regex groups and our parser
+				// res[0] = full match (e.g., "E22E23")
+				// res[1] = first episode number (e.g., "22")
+				// res[2] = second episode number if present (e.g., "23")
+				
+				// Try ParseEpisodeString first with the full match
+				episodeInfo, err := ParseEpisodeString(res[0])
+				
+				if err != nil {
+					// Fallback: use the regex captured groups directly
+					log.WithFields(log.Fields{"raw": res[0], "error": err}).Debugln("ParseEpisodeString failed, using regex groups")
+					
+					// Check if we have a second episode (range)
+					if len(res) > 2 && res[2] != "" {
+						// Format as range: "22-23" (clean internal representation)
+						ep1, _ := strconv.Atoi(res[1])
+						ep2, _ := strconv.Atoi(res[2])
+						f.Episode = fmt.Sprintf("%02d-%02d", ep1, ep2)
+					} else {
+						// Single episode: "22"
+						ep, _ := strconv.Atoi(res[1])
+						f.Episode = fmt.Sprintf("%02d", ep)
+					}
+				} else {
+					// Successfully parsed - format the result
+					if episodeInfo.IsRange {
+						// Store clean range: "22-23"
+						f.Episode = fmt.Sprintf("%02d-%02d", episodeInfo.Start, episodeInfo.End)
+					} else {
+						f.Episode = fmt.Sprintf("%02d", episodeInfo.Start)
+					}
+				}
 				case "quality":
 					f.Quality = res[1]
 				case "resolution":
@@ -462,6 +480,7 @@ func queryTmdb(p *ParsedFile) error {
 	return nil
 }
 
+
 // TargetName is the name the file should be renamed to
 func (p *ParsedFile) TargetName() string {
 	var newName string
@@ -471,7 +490,24 @@ func (p *ParsedFile) TargetName() string {
 	} else if p.IsSeries {
 		newName = p.Options.SeriesFormat
 		newName = strings.Replace(newName, "{s}", p.Season, -1)
-		newName = strings.Replace(newName, "{e}", p.Episode, -1)
+		
+		// Smart episode formatting for multi-episode files
+		// Internal representation: "22-23" (clean)
+		// Output representation: "22-E23" (Plex-friendly)
+		episodeFormatted := p.Episode
+		if strings.Contains(p.Episode, "-") {
+			// It's a range: convert "22-23" → "22-E23"
+			parts := strings.Split(p.Episode, "-")
+			if len(parts) == 2 {
+				episodeFormatted = fmt.Sprintf("%s-E%s", parts[0], parts[1])
+				log.WithFields(log.Fields{
+					"internal": p.Episode,
+					"formatted": episodeFormatted,
+				}).Debugln("Formatted episode range for Plex compatibility")
+			}
+		}
+		
+		newName = strings.Replace(newName, "{e}", episodeFormatted, -1)
 		newName = strings.Replace(newName, "{x}", p.EpisodeName, -1)
 	} else {
 		newName = p.Filename
@@ -486,7 +522,7 @@ func (p *ParsedFile) TargetName() string {
 
 	// Sometimes we end up with an extra dot somehow. This should remove the extra dot
 	// I'm tired, this can probably be done better...
-	if (string(newName[len(newName)-1])) == "." {
+	if len(newName) > 0 && string(newName[len(newName)-1]) == "." {
 		newName = newName[0 : len(newName)-1]
 	}
 
