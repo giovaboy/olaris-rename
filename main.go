@@ -46,4 +46,8 @@ func main() {
 
 	e := NewApp(*recursive, *action, *movieFolder, *extractPath, *seriesFolder, *dryrun, *tmdbLookup, *skipExtracting, *minFileSize, *forceMovie, *forceSeries)
 	e.StartRun(*filePath)
+
+    if *jsonOutput {
+		writeJSONResults()
+	}
 }

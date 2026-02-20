@@ -9,10 +9,17 @@ import (
 	"strconv"
 	"strings"
 	"encoding/json"
+	"sync"
 
 	"github.com/mholt/archiver/v3"
 	log "github.com/sirupsen/logrus"
 	"github.com/giovaboy/olaris-rename/identify"
+)
+
+// Global variables for collecting JSON results
+var (
+	jsonResults []ActionResult
+	jsonMutex   sync.Mutex
 )
 
 // NewApp creates a new environment
@@ -276,6 +283,7 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 		log.WithFields(log.Fields{"target": targetLocation, "source": source, "action": action}).Infoln("--dry-run enabled, not acting on file")
 	}
 
+	// Collect JSON results instead of writing immediately
 	if *jsonOutput {
 		result := ActionResult{
 			ExternalID:   p.ExternalID,
@@ -293,23 +301,13 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 			Resolution:   p.Resolution,
 			Quality:      p.Quality,
 		}
-		
-		jsonBytes, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			log.WithError(err).Error("Failed to marshal JSON output")
-			return err
-		}
-		if *jsonOutputFile != "" {
-        err = os.WriteFile(*jsonOutputFile, jsonBytes, 0644)
-        if err != nil {
-            log.WithError(err).Errorf("Failed to write JSON to file: %s", *jsonOutputFile)
-            return err
-        }
-        log.WithField("file", *jsonOutputFile).Debug("JSON output written to file")
-    } else {
-        // Write to stdout with clear marker
-        fmt.Fprintf(os.Stdout, "JSON_RESULT:%s\n", string(jsonBytes))
-    }
+
+		// Thread-safe append to results array
+		jsonMutex.Lock()
+		jsonResults = append(jsonResults, result)
+		jsonMutex.Unlock()
+
+		log.WithField("file", p.FullName()).Debug("Added to JSON results")
 	}
 
 	return nil
@@ -339,5 +337,51 @@ func (e *App) StartRun(path string) {
 		}
 	} else {
 		e.checkFile(path)
+	}
+}
+
+// writeJSONResults writes all collected JSON results to file or stdout
+func writeJSONResults() {
+	jsonMutex.Lock()
+	defer jsonMutex.Unlock()
+
+	if len(jsonResults) == 0 {
+		log.Debug("No JSON results to write")
+		return
+	}
+
+	var output []byte
+	var err error
+
+	if len(jsonResults) == 1 {
+		// Single result - output as object (backward compatible)
+		output, err = json.MarshalIndent(jsonResults[0], "", "  ")
+		if err != nil {
+			log.WithError(err).Error("Failed to marshal JSON output")
+			return
+		}
+	} else {
+		// Multiple results - output as array
+		output, err = json.MarshalIndent(jsonResults, "", "  ")
+		if err != nil {
+			log.WithError(err).Error("Failed to marshal JSON output")
+			return
+		}
+	}
+
+	if *jsonOutputFile != "" {
+		// Write to file
+		err = os.WriteFile(*jsonOutputFile, output, 0644)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to write JSON to file: %s", *jsonOutputFile)
+			return
+		}
+		log.WithFields(log.Fields{
+			"file":  *jsonOutputFile,
+			"count": len(jsonResults),
+		}).Info("Written JSON results to file")
+	} else {
+		// Write to stdout with marker
+		fmt.Fprintf(os.Stdout, "JSON_RESULTS:%s\n", string(output))
 	}
 }
