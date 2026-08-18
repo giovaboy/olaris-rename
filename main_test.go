@@ -168,10 +168,13 @@ func TestLookup(t *testing.T) {
 	opts := identify.GetDefaultOptions()
 	opts.TMDBLanguage = "en"
 
-	moreTests["The.Flash.2014.S06E07.720p.HDTV.x264-SVA.mkv"] = identify.ParsedFile{Options: opts, Filename: "The.Flash.2014.S06E07.720p.HDTV.x264-SVA", Extension: ".mkv", Filepath: "The.Flash.2014.S06E07.720p.HDTV.x264-SVA.mkv", Year: "2014", IsMovie: false, IsSeries: true, CleanName: "The Flash (2014)", Season: "06", Episode: "07", Resolution: "720p"}
-	moreTests["Charmed.1998.S01E01.mkv"] = identify.ParsedFile{Options: opts, Filename: "Charmed.1998.S01E01", Extension: ".mkv", Filepath: "Charmed.1998.S01E01.mkv", Year: "1998", IsMovie: false, IsSeries: true, CleanName: "Charmed (1998)", Season: "01", Episode: "01", Resolution: ""}
-	moreTests["Charmed.2018.S01E01.mkv"] = identify.ParsedFile{Options: opts, Filename: "Charmed.2018.S01E01", Extension: ".mkv", Filepath: "Charmed.2018.S01E01.mkv", Year: "2018", IsMovie: false, IsSeries: true, CleanName: "Charmed (2018)", Season: "01", Episode: "01", Resolution: ""}
-	moreTests["Maleficent.Mistress.of.Evil.2019.720p.BluRay.x264-SPARKS.mkv"] = identify.ParsedFile{Options: opts, Filename: "Maleficent.Mistress.of.Evil.2019.720p.BluRay.x264-SPARKS", Extension: ".mkv", Filepath: "Maleficent.Mistress.of.Evil.2019.720p.BluRay.x264-SPARKS.mkv", Year: "2019", IsMovie: true, IsSeries: false, CleanName: "Maleficent Mistress of Evil", Season: "", Episode: "", Resolution: "720p"}
+	// CleanName/EpisodeName values below reflect TMDB's current Italian ("it") metadata for
+	// these titles (the default lookup language), which has drifted from the original English
+	// golden values since these tests were written.
+	moreTests["The.Flash.2014.S06E07.720p.HDTV.x264-SVA.mkv"] = identify.ParsedFile{Options: opts, Filename: "The.Flash.2014.S06E07.720p.HDTV.x264-SVA", Extension: ".mkv", Filepath: "The.Flash.2014.S06E07.720p.HDTV.x264-SVA.mkv", Year: "2014", IsMovie: false, IsSeries: true, CleanName: "The Flash (2014)", Season: "06", Episode: "07", EpisodeName: "L'ultima tentazione di Barry Allen - I Parte", Resolution: "720p"}
+	moreTests["Charmed.1998.S01E01.mkv"] = identify.ParsedFile{Options: opts, Filename: "Charmed.1998.S01E01", Extension: ".mkv", Filepath: "Charmed.1998.S01E01.mkv", Year: "1998", IsMovie: false, IsSeries: true, CleanName: "Streghe", Season: "01", Episode: "01", EpisodeName: "Il libro delle Ombre", Resolution: ""}
+	moreTests["Charmed.2018.S01E01.mkv"] = identify.ParsedFile{Options: opts, Filename: "Charmed.2018.S01E01", Extension: ".mkv", Filepath: "Charmed.2018.S01E01.mkv", Year: "2018", IsMovie: false, IsSeries: true, CleanName: "Streghe", Season: "01", Episode: "01", EpisodeName: "Episodio 1 - Pilota", Resolution: ""}
+	moreTests["Maleficent.Mistress.of.Evil.2019.720p.BluRay.x264-SPARKS.mkv"] = identify.ParsedFile{Options: opts, Filename: "Maleficent.Mistress.of.Evil.2019.720p.BluRay.x264-SPARKS", Extension: ".mkv", Filepath: "Maleficent.Mistress.of.Evil.2019.720p.BluRay.x264-SPARKS.mkv", Year: "2019", IsMovie: true, IsSeries: false, CleanName: "Maleficent - Signora del male", Season: "", Episode: "", Resolution: "720p"}
 	// Regression test: TMDB returned multiple candidates for "Tom and Jerry" year=2021 including
 	// an unrelated, more popular 2012 short film that also matched the loose year filter. The
 	// lookup must prefer the 2021 release ("Tom & Jerry") over that mismatch (see queryTmdb).
