@@ -6,11 +6,21 @@ If you want something more powerfull please check out [Filebot](https://www.file
 
 To start scanning give it a `--filepath` argument, this can be a folder or file.
 
-By default it will rename files based purely on the given filenames, alternatively
-you can set `--tmdb-lookup=true`. In this case it will try to look-up actual titles
-found in the filename on themoviedb.org, this might result in better names but will
-be much slower.
+By default it will try to look-up actual titles found in the filename on
+themoviedb.org (`--tmdb-lookup=true` by default), this results in better names
+but is slower. Set `--tmdb-lookup=false` to rename files based purely on the
+parsed filename instead.
 
+Movie and series names are renamed using `--movie-format`/`--series-format`,
+which support the following placeholders:
+
+- `{n}` - Name
+- `{y}` - Year
+- `{s}` - Season
+- `{e}` - Episode
+- `{x}` - Episode name (TMDB lookup only)
+- `{r}` - Resolution
+- `{q}` - Quality
 
 ```
   -action string
@@ -18,27 +28,44 @@ be much slower.
   -dry-run
     	Don't actually modify any files.
   -extract-path string
-    	Path to extract content to. (default "$HOME/media-olaris/extracted")
+    	Path to extract content to. (default "$HOME/media/extracted")
   -filepath string
     	Path to scan (can be a folder or file)
+  -force-movie
+    	Forces the supplied path to be identified as a movie.
+  -force-series
+    	Forces the supplied path to be identified as a series.
+  -json-output
+    	Output results as JSON.
+  -json-output-file string
+    	Write JSON output to file instead of stdout.
   -log-to-file
     	Logs are written to stdout as well as a logfile.
-  -movie-folder string
-    	Folder where movies should be placed (default "$HOME/media-olaris/Movies")
-  -movie-format string
-      Format used to rename movies. (default "{n}/{n} ({y}) {r}")
   -min-file-size string
-      Minimal file size in MB for olaris-rename to consider a file valid to be processed. (default "120")
+    	Minimal file size in MB for olaris-rename to consider a file valid to be processed. (default "120")
+  -movie-folder string
+    	Folder where movies should be placed (default "$HOME/media/Movies")
+  -movie-format string
+    	Format used to rename movies. (default "{n} ({y})/{n} ({y}) {r}")
   -music-folder string
-    	Folder where music should be placed (default "$HOME/media-olaris/Music")
+    	Folder where music should be placed (default "$HOME/media/Music")
   -recursive
-    	Scan folders inside of other folders.
+    	Scan folders inside of other folders. (default true)
   -series-folder string
-    	Folder where series should be placed (default "$HOME/media-olaris/TV Shows")
+    	Folder where series should be placed (default "$HOME/media/TV Shows")
   -series-format string
-      Format used to rename series. (default "{n}/Season.{s}/{n}.S{s}E{e}.{r}")
+    	Format used to rename series. (default "{n}/Stagione {s}/{n} - S{s}E{e} - {x}{r}")
+  -skip-extracting
+    	Disable automatic extraction.
   -tmdb-lookup
-    	Should the TMDB be used for better look-up and matching
+    	Should the TMDB be used for better look-up and matching (default true)
   -verbose
     	Show debug log information.
 ```
+
+### JSON output
+
+With `--json-output=true`, results are printed to stdout prefixed with
+`JSON_RESULTS:` (a single object if only one file was processed, an array
+otherwise). Pass `--json-output-file <path>` to write the results to a file
+instead.
