@@ -396,10 +396,11 @@ func queryTmdb(p *ParsedFile) error {
 		if len(searchRes.Results) > 0 {
 			tv := searchRes.Results[0]
 			if p.Year != "" {
+				bestPopularity := float32(-1)
 				for _, candidate := range searchRes.Results {
-					if strings.HasPrefix(candidate.FirstAirDate, p.Year) {
+					if strings.HasPrefix(candidate.FirstAirDate, p.Year) && candidate.Popularity > bestPopularity {
 						tv = candidate
-						break
+						bestPopularity = candidate.Popularity
 					}
 				}
 			}
@@ -473,10 +474,11 @@ func queryTmdb(p *ParsedFile) error {
 		if len(searchRes.Results) > 0 {
 			mov := searchRes.Results[0]
 			if p.Year != "" {
+				bestPopularity := float32(-1)
 				for _, candidate := range searchRes.Results {
-					if strings.HasPrefix(candidate.ReleaseDate, p.Year) {
+					if strings.HasPrefix(candidate.ReleaseDate, p.Year) && candidate.Popularity > bestPopularity {
 						mov = candidate
-						break
+						bestPopularity = candidate.Popularity
 					}
 				}
 			}

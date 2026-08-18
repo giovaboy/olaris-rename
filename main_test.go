@@ -172,6 +172,10 @@ func TestLookup(t *testing.T) {
 	moreTests["Charmed.1998.S01E01.mkv"] = identify.ParsedFile{Options: opts, Filename: "Charmed.1998.S01E01", Extension: ".mkv", Filepath: "Charmed.1998.S01E01.mkv", Year: "1998", IsMovie: false, IsSeries: true, CleanName: "Charmed (1998)", Season: "01", Episode: "01", Resolution: ""}
 	moreTests["Charmed.2018.S01E01.mkv"] = identify.ParsedFile{Options: opts, Filename: "Charmed.2018.S01E01", Extension: ".mkv", Filepath: "Charmed.2018.S01E01.mkv", Year: "2018", IsMovie: false, IsSeries: true, CleanName: "Charmed (2018)", Season: "01", Episode: "01", Resolution: ""}
 	moreTests["Maleficent.Mistress.of.Evil.2019.720p.BluRay.x264-SPARKS.mkv"] = identify.ParsedFile{Options: opts, Filename: "Maleficent.Mistress.of.Evil.2019.720p.BluRay.x264-SPARKS", Extension: ".mkv", Filepath: "Maleficent.Mistress.of.Evil.2019.720p.BluRay.x264-SPARKS.mkv", Year: "2019", IsMovie: true, IsSeries: false, CleanName: "Maleficent Mistress of Evil", Season: "", Episode: "", Resolution: "720p"}
+	// Regression test: TMDB returned multiple candidates for "Tom and Jerry" year=2021 including
+	// an unrelated, more popular 2012 short film that also matched the loose year filter. The
+	// lookup must prefer the 2021 release ("Tom & Jerry") over that mismatch (see queryTmdb).
+	moreTests["Tom and Jerry (2021).mkv"] = identify.ParsedFile{Options: opts, Filename: "Tom and Jerry (2021)", Extension: ".mkv", Filepath: "Tom and Jerry (2021).mkv", Year: "2021", IsMovie: true, IsSeries: false, CleanName: "Tom & Jerry", Season: "", Episode: "", Resolution: ""}
 	for name, mi := range moreTests {
 		newMi := identify.NewParsedFile(name, identify.Options{Lookup: true})
 		if newMi.Extension != mi.Extension {
