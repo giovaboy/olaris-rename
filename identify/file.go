@@ -394,7 +394,15 @@ func queryTmdb(p *ParsedFile) error {
 		}
 
 		if len(searchRes.Results) > 0 {
-			tv := searchRes.Results[0] // Take the first result for now
+			tv := searchRes.Results[0]
+			if p.Year != "" {
+				for _, candidate := range searchRes.Results {
+					if strings.HasPrefix(candidate.FirstAirDate, p.Year) {
+						tv = candidate
+						break
+					}
+				}
+			}
 			log.Debugln("TV:", tv)
 			p.ExternalID = tv.ID
 			p.ExternalName = tv.Name
@@ -463,7 +471,15 @@ func queryTmdb(p *ParsedFile) error {
 		}
 
 		if len(searchRes.Results) > 0 {
-			mov := searchRes.Results[0] // Take the first result for now
+			mov := searchRes.Results[0]
+			if p.Year != "" {
+				for _, candidate := range searchRes.Results {
+					if strings.HasPrefix(candidate.ReleaseDate, p.Year) {
+						mov = candidate
+						break
+					}
+				}
+			}
 			log.Debugln("Movie:", mov)
 
 			p.ExternalID = mov.ID
