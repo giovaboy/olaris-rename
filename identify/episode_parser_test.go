@@ -180,10 +180,10 @@ func TestParseEpisodeString(t *testing.T) {
 // TestEpisodeInfoMethods tests the EpisodeInfo helper methods
 func TestEpisodeInfoMethods(t *testing.T) {
 	tests := []struct {
-		name               string
-		info               *EpisodeInfo
-		wantFirstEpisode   int
-		wantRangeString    string
+		name             string
+		info             *EpisodeInfo
+		wantFirstEpisode int
+		wantRangeString  string
 	}{
 		{
 			name:             "single episode",

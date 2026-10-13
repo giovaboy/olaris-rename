@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/giovaboy/olaris-rename/identify"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestExtract(t *testing.T) {

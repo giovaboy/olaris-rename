@@ -103,34 +103,34 @@ func TestTargetLocation(t *testing.T) {
 // TestFileSizeValidation tests file size minimum validation
 func TestFileSizeValidation(t *testing.T) {
 	tests := []struct {
-		name        string
+		name          string
 		fileSizeBytes int64
-		minSizeMB   int64
-		valid       bool
+		minSizeMB     int64
+		valid         bool
 	}{
 		{
-			name:         "file above minimum",
+			name:          "file above minimum",
 			fileSizeBytes: 200 * 1024 * 1024, // 200 MB
-			minSizeMB:    120,
-			valid:        true,
+			minSizeMB:     120,
+			valid:         true,
 		},
 		{
-			name:         "file at minimum",
+			name:          "file at minimum",
 			fileSizeBytes: 120 * 1024 * 1024, // 120 MB
-			minSizeMB:    120,
-			valid:        true,
+			minSizeMB:     120,
+			valid:         true,
 		},
 		{
-			name:         "file below minimum",
+			name:          "file below minimum",
 			fileSizeBytes: 100 * 1024 * 1024, // 100 MB
-			minSizeMB:    120,
-			valid:        false,
+			minSizeMB:     120,
+			valid:         false,
 		},
 		{
-			name:         "very small file",
+			name:          "very small file",
 			fileSizeBytes: 1024, // 1 KB
-			minSizeMB:    120,
-			valid:        false,
+			minSizeMB:     120,
+			valid:         false,
 		},
 	}
 
@@ -149,8 +149,8 @@ func TestFileSizeValidation(t *testing.T) {
 // TestExtensionValidation tests video extension validation
 func TestExtensionValidation(t *testing.T) {
 	tests := []struct {
-		name       string
-		extension  string
+		name        string
+		extension   string
 		isSupported bool
 	}{
 		{
@@ -233,7 +233,7 @@ func TestPathHandling(t *testing.T) {
 
 // Helper function to check if string contains substring
 func contains(s, substr string) bool {
-	return len(s) > 0 && len(substr) > 0 && (s == substr || 
+	return len(s) > 0 && len(substr) > 0 && (s == substr ||
 		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr)))
 }
 

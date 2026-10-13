@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -8,12 +9,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"encoding/json"
 	"sync"
 
+	"github.com/giovaboy/olaris-rename/identify"
 	"github.com/mholt/archiver/v3"
 	log "github.com/sirupsen/logrus"
-	"github.com/giovaboy/olaris-rename/identify"
 )
 
 // Global variables for collecting JSON results
@@ -162,7 +162,8 @@ func (e *App) checkFile(filePath string) {
 	var err error
 	log.WithFields(log.Fields{"filePath": filePath}).Debugln("checking file")
 
-	ext := filepath.Ext(filePath)
+	//ext := filepath.Ext(filePath)
+	ext := strings.ToLower(filepath.Ext(filePath))
 
 	info, err := os.Stat(filePath)
 	if err != nil {
@@ -185,11 +186,12 @@ func (e *App) checkFile(filePath string) {
 		log.WithFields(log.Fields{"extension": ext, "file": filePath}).Println("Got a compressed file")
 
 		err := archiver.Walk(filePath, func(file archiver.File) error {
-			extension := filepath.Ext(file.Name())
+			extension := strings.ToLower(filepath.Ext(file.Name()))
 			if identify.SupportedVideoExtensions[extension] {
 				log.WithFields(log.Fields{"extension": ext, "filename": file.Name()}).Println("Extracting file and running new scan on the result")
 				archiver.Unarchive(filePath, e.extractPath)
-				target := strings.Replace(file.Name(), ext, "", -1)
+				// Use the archive's original extension (case preserved) to build the target name
+				target := strings.TrimSuffix(file.Name(), filepath.Ext(filePath))
 				rec := e.recursive
 				e.recursive = true
 				e.StartRun(filepath.Join(e.extractPath, target))

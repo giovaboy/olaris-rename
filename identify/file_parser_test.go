@@ -8,12 +8,12 @@ import (
 // TestParseContentSeries tests series parsing with various filename formats
 func TestParseContentSeries(t *testing.T) {
 	tests := []struct {
-		name          string
-		filePath      string
-		wantSeason    string
-		wantEpisode   string
-		wantYear      string
-		wantNamePart  string // substring check to avoid whitespace issues
+		name         string
+		filePath     string
+		wantSeason   string
+		wantEpisode  string
+		wantYear     string
+		wantNamePart string // substring check to avoid whitespace issues
 	}{
 		{
 			name:         "the flash with year and quality",
@@ -120,6 +120,12 @@ func TestParseContentMovie(t *testing.T) {
 			wantNamePart: "Avatar",
 		},
 		{
+			name:         "uppercase/mixed-case extension",
+			filePath:     "Inception.2010.1080p.BluRay.x264.AVi",
+			wantYear:     "2010",
+			wantNamePart: "Inception",
+		},
+		{
 			name:         "inception with dots",
 			filePath:     "Inception.2010.1080p.BluRay.x264.mkv",
 			wantYear:     "2010",
@@ -160,10 +166,10 @@ func TestParseContentMovie(t *testing.T) {
 // TestParseContentMixedScenarios tests edge cases and mixed scenarios
 func TestParseContentMixedScenarios(t *testing.T) {
 	tests := []struct {
-		name        string
-		filePath    string
+		name         string
+		filePath     string
 		wantIsSeries bool
-		wantIsMovie bool
+		wantIsMovie  bool
 		wantContains string
 	}{
 		{
@@ -210,14 +216,30 @@ func TestParseContentMixedScenarios(t *testing.T) {
 	}
 }
 
+func TestMixedCaseExtension(t *testing.T) {
+	pf := NewParsedFile("Tom e Jerry Incontrano sherlock Holmes(2010).AVi", Options{ForceMovie: true})
+
+	// Extension must be normalized to lowercase
+	if pf.Extension != ".avi" {
+		t.Errorf("Extension = %q, want %q", pf.Extension, ".avi")
+	}
+	// Filename must not contain the original extension
+	if pf.Filename != "Tom e Jerry Incontrano sherlock Holmes(2010)" {
+		t.Errorf("Filename = %q", pf.Filename)
+	}
+	if !pf.IsMovie || pf.Year != "2010" {
+		t.Errorf("IsMovie = %v, Year = %q", pf.IsMovie, pf.Year)
+	}
+}
+
 // TestParseContentWithOptions tests parsing with custom options
 func TestParseContentWithOptions(t *testing.T) {
 	tests := []struct {
-		name           string
-		filePath       string
-		opts           Options
-		wantIsMovie    bool
-		wantIsSeries   bool
+		name         string
+		filePath     string
+		opts         Options
+		wantIsMovie  bool
+		wantIsSeries bool
 	}{
 		{
 			name:         "force movie option",
@@ -275,11 +297,4 @@ func BenchmarkParseContentMovie(b *testing.B) {
 	}
 }
 
-// BenchmarkParseContentEpisodeRange benchmarks multi-episode parsing
-func BenchmarkParseContentEpisodeRange(b *testing.B) {
-	opts := Options{Lookup: false}
-
-	for i := 0; i < b.N; i++ {
-		NewParsedFile("Spidey.S01E22E23.mkv", opts)
-	}
-}
+// BenchmarkParseConten

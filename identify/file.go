@@ -156,10 +156,15 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 	opts := getOpts(o)
 	log.WithField("options", opts.String()).Debugln("Parsing filename with options")
 	f := ParsedFile{Filepath: filePath, OriginalFile: opts.OriginalFile, Options: opts}
-	f.Extension = filepath.Ext(filePath)
-	filename := strings.TrimSuffix(filePath, f.Extension)
+
+	// Strip the original extension first, preserving its case,
+	// otherwise TrimSuffix would not match (e.g. ".avi" vs ".AVi")
+	origExt := filepath.Ext(filePath)
+	filename := strings.TrimSuffix(filePath, origExt)
 	filename = filepath.Base(filename)
 	f.Filename = filename
+	// Normalize extension to lowercase for map lookups and target naming
+	f.Extension = strings.ToLower(origExt)
 	log.WithFields(log.Fields{"file": f.Filename}).Debugln("Checking file")
 
 	if SupportedVideoExtensions[f.Extension] {
@@ -186,38 +191,38 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 						log.Debugln("We already have found a season earlier so skipping the normal season match.")
 					}
 				case "episode":
-				// Parse the episode string using both the original regex groups and our parser
-				// res[0] = full match (e.g., "E22E23")
-				// res[1] = first episode number (e.g., "22")
-				// res[2] = second episode number if present (e.g., "23")
-				
-				// Try ParseEpisodeString first with the full match
-				episodeInfo, err := ParseEpisodeString(res[0])
-				
-				if err != nil {
-					// Fallback: use the regex captured groups directly
-					log.WithFields(log.Fields{"raw": res[0], "error": err}).Debugln("ParseEpisodeString failed, using regex groups")
-					
-					// Check if we have a second episode (range)
-					if len(res) > 2 && res[2] != "" {
-						// Format as range: "22-23" (clean internal representation)
-						ep1, _ := strconv.Atoi(res[1])
-						ep2, _ := strconv.Atoi(res[2])
-						f.Episode = fmt.Sprintf("%02d-%02d", ep1, ep2)
+					// Parse the episode string using both the original regex groups and our parser
+					// res[0] = full match (e.g., "E22E23")
+					// res[1] = first episode number (e.g., "22")
+					// res[2] = second episode number if present (e.g., "23")
+
+					// Try ParseEpisodeString first with the full match
+					episodeInfo, err := ParseEpisodeString(res[0])
+
+					if err != nil {
+						// Fallback: use the regex captured groups directly
+						log.WithFields(log.Fields{"raw": res[0], "error": err}).Debugln("ParseEpisodeString failed, using regex groups")
+
+						// Check if we have a second episode (range)
+						if len(res) > 2 && res[2] != "" {
+							// Format as range: "22-23" (clean internal representation)
+							ep1, _ := strconv.Atoi(res[1])
+							ep2, _ := strconv.Atoi(res[2])
+							f.Episode = fmt.Sprintf("%02d-%02d", ep1, ep2)
+						} else {
+							// Single episode: "22"
+							ep, _ := strconv.Atoi(res[1])
+							f.Episode = fmt.Sprintf("%02d", ep)
+						}
 					} else {
-						// Single episode: "22"
-						ep, _ := strconv.Atoi(res[1])
-						f.Episode = fmt.Sprintf("%02d", ep)
+						// Successfully parsed - format the result
+						if episodeInfo.IsRange {
+							// Store clean range: "22-23"
+							f.Episode = fmt.Sprintf("%02d-%02d", episodeInfo.Start, episodeInfo.End)
+						} else {
+							f.Episode = fmt.Sprintf("%02d", episodeInfo.Start)
+						}
 					}
-				} else {
-					// Successfully parsed - format the result
-					if episodeInfo.IsRange {
-						// Store clean range: "22-23"
-						f.Episode = fmt.Sprintf("%02d-%02d", episodeInfo.Start, episodeInfo.End)
-					} else {
-						f.Episode = fmt.Sprintf("%02d", episodeInfo.Start)
-					}
-				}
 				case "quality":
 					f.Quality = res[1]
 				case "resolution":
@@ -238,48 +243,48 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 		if !f.IsMusic {
 			log.WithFields(log.Fields{"cleanName": cleanName, "year": f.Year, "episode": f.Episode, "season": f.Season}).Debugln("Pre-parsing done, initial result.")
 			// CORRECTED AUTO-DETECT LOGIC - Replace the section in your identify/file.go
-// Around line 100-130
+			// Around line 100-130
 
-if opts.ForceMovie {
-    f.IsMovie = true
-    f.Episode = ""  // Clear false positives
-    f.Season = ""
-    log.Debugln("Identified file as a movie (forced)")
-} else if opts.ForceSeries {
-    f.IsSeries = true
-    log.Debugln("Identified file as a series (forced)")
-} else if f.Season != "" {
-    // If season is present, it's definitely a series
-    f.IsSeries = true
-    log.Debugln("Identified file as an episode (has season)")
-} else if f.Year != "" && f.Episode == "" {
-    // Year without episode = movie
-    f.IsMovie = true
-    log.Debugln("Identified file as a movie (has year, no episode)")
-} else if f.Year != "" && f.Episode != "" {
-    // Year AND episode (without season) = probably movie with false positive episode
-    // Log the false positive BEFORE clearing it
-    log.WithFields(log.Fields{
-        "falsePositiveEpisode": f.Episode,  // Log BEFORE clearing
-        "year": f.Year,
-    }).Debugln("Identified file as movie, cleared false positive episode")
-    f.IsMovie = true
-    f.Episode = ""  // Clear false positive AFTER logging
-    f.Season = ""
-} else if f.Episode != "" && f.Season != "" {
-    // Episode AND season (both present) = series
-    // This handles S##E## format correctly
-    f.IsSeries = true
-    log.Debugln("Identified file as an episode (has both season and episode)")
-} else {
-    // Nothing sensible found, try parent directory
-    fileParent := filepath.Base(filepath.Dir(filePath))
-    if fileParent != "" && opts.OriginalFile == "" && fileParent != "." {
-        log.WithFields(log.Fields{"file": f.Filename, "filePath": filePath, "fileParent": fileParent}).Warnln("Nothing sensible found, trying again with parent.")
-        opts.OriginalFile = filePath
-        return NewParsedFile(fileParent+f.Extension, opts)
-    }
-}
+			if opts.ForceMovie {
+				f.IsMovie = true
+				f.Episode = "" // Clear false positives
+				f.Season = ""
+				log.Debugln("Identified file as a movie (forced)")
+			} else if opts.ForceSeries {
+				f.IsSeries = true
+				log.Debugln("Identified file as a series (forced)")
+			} else if f.Season != "" {
+				// If season is present, it's definitely a series
+				f.IsSeries = true
+				log.Debugln("Identified file as an episode (has season)")
+			} else if f.Year != "" && f.Episode == "" {
+				// Year without episode = movie
+				f.IsMovie = true
+				log.Debugln("Identified file as a movie (has year, no episode)")
+			} else if f.Year != "" && f.Episode != "" {
+				// Year AND episode (without season) = probably movie with false positive episode
+				// Log the false positive BEFORE clearing it
+				log.WithFields(log.Fields{
+					"falsePositiveEpisode": f.Episode, // Log BEFORE clearing
+					"year":                 f.Year,
+				}).Debugln("Identified file as movie, cleared false positive episode")
+				f.IsMovie = true
+				f.Episode = "" // Clear false positive AFTER logging
+				f.Season = ""
+			} else if f.Episode != "" && f.Season != "" {
+				// Episode AND season (both present) = series
+				// This handles S##E## format correctly
+				f.IsSeries = true
+				log.Debugln("Identified file as an episode (has both season and episode)")
+			} else {
+				// Nothing sensible found, try parent directory
+				fileParent := filepath.Base(filepath.Dir(filePath))
+				if fileParent != "" && opts.OriginalFile == "" && fileParent != "." {
+					log.WithFields(log.Fields{"file": f.Filename, "filePath": filePath, "fileParent": fileParent}).Warnln("Nothing sensible found, trying again with parent.")
+					opts.OriginalFile = filePath
+					return NewParsedFile(fileParent+f.Extension, opts)
+				}
+			}
 
 			for _, match := range order {
 				res := matchers[match].FindStringSubmatch(cleanName)
@@ -310,7 +315,7 @@ if opts.ForceMovie {
 			if f.AnimeGroup == "" {
 				log.WithField("cleanName", cleanName).Debugln("Probably not Anime so cleaning a bit more.")
 				cleanName = regexp.MustCompile(`\s{2,}.*`).ReplaceAllString(cleanName, "")
-				cleanName = properTitleCase(cleanName)//cases.Title(language.English).String(cleanName)
+				cleanName = properTitleCase(cleanName) //cases.Title(language.English).String(cleanName)
 			}
 		}
 
@@ -498,7 +503,6 @@ func queryTmdb(p *ParsedFile) error {
 	return nil
 }
 
-
 // TargetName is the name the file should be renamed to
 func (p *ParsedFile) TargetName() string {
 	var newName string
@@ -508,7 +512,7 @@ func (p *ParsedFile) TargetName() string {
 	} else if p.IsSeries {
 		newName = p.Options.SeriesFormat
 		newName = strings.Replace(newName, "{s}", p.Season, -1)
-		
+
 		// Smart episode formatting for multi-episode files
 		// Internal representation: "22-23" (clean)
 		// Output representation: "22-E23" (Plex-friendly)
@@ -519,12 +523,12 @@ func (p *ParsedFile) TargetName() string {
 			if len(parts) == 2 {
 				episodeFormatted = fmt.Sprintf("%s-E%s", parts[0], parts[1])
 				log.WithFields(log.Fields{
-					"internal": p.Episode,
+					"internal":  p.Episode,
 					"formatted": episodeFormatted,
 				}).Debugln("Formatted episode range for Plex compatibility")
 			}
 		}
-		
+
 		newName = strings.Replace(newName, "{e}", episodeFormatted, -1)
 		newName = strings.Replace(newName, "{x}", p.EpisodeName, -1)
 	} else {
@@ -580,7 +584,7 @@ func properTitleCase(s string) string {
 		"but": true, "by": true, "for": true, "in": true, "of": true,
 		"on": true, "or": true, "the": true, "to": true, "via": true,
 	}
-	
+
 	words := strings.Fields(s)
 	for i, word := range words {
 		lower := strings.ToLower(word)
