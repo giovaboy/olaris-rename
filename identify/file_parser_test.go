@@ -106,6 +106,7 @@ func TestParseContentMovie(t *testing.T) {
 		filePath     string
 		wantYear     string
 		wantNamePart string
+		forceMovie   bool
 	}{
 		{
 			name:         "matrix revolutions with dash",
@@ -136,13 +137,13 @@ func TestParseContentMovie(t *testing.T) {
 			filePath:     "The Godfather 1080p.mkv",
 			wantYear:     "",
 			wantNamePart: "The Godfather",
+			forceMovie:   true,
 		},
 	}
 
-	opts := Options{Lookup: false}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			opts := Options{Lookup: false, ForceMovie: tt.forceMovie}
 			pf := NewParsedFile(tt.filePath, opts)
 
 			// Verify it was identified as a movie

@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/giovaboy/olaris-rename/identify"
-	"github.com/mholt/archiver/v3"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -183,26 +182,18 @@ func (e *App) checkFile(filePath string) {
 	}
 
 	if identify.SupportedCompressedExtensions[ext] && !e.skipExtracting {
-		log.WithFields(log.Fields{"extension": ext, "file": filePath}).Println("Got a compressed file")
+		log.WithFields(log.Fields{"extension": ext, "file": filePath}).Infoln("Got a compressed file")
 
-		err := archiver.Walk(filePath, func(file archiver.File) error {
-			extension := strings.ToLower(filepath.Ext(file.Name()))
-			if identify.SupportedVideoExtensions[extension] {
-				log.WithFields(log.Fields{"extension": ext, "filename": file.Name()}).Println("Extracting file and running new scan on the result")
-				archiver.Unarchive(filePath, e.extractPath)
-				// Use the archive's original extension (case preserved) to build the target name
-				target := strings.TrimSuffix(file.Name(), filepath.Ext(filePath))
-				rec := e.recursive
-				e.recursive = true
-				e.StartRun(filepath.Join(e.extractPath, target))
-				e.recursive = rec
-			}
-			return nil
-		})
-
+		extracted, err := e.extractVideos(filePath)
 		if err != nil {
-			log.WithFields(log.Fields{"error": err}).Warnln("Received an error while looking through compressed data.")
+			log.WithFields(log.Fields{"error": err, "file": filePath}).Warnln("Received an error while extracting compressed data.")
 		}
+
+		// Process each extracted video like any other file
+		for _, p := range extracted {
+			e.checkFile(p)
+		}
+		return
 	}
 
 	file := identify.NewParsedFile(filePath, identify.Options{Lookup: e.tmdbLookup, MovieFormat: *movieFormat, SeriesFormat: *seriesFormat, ForceMovie: e.forceMovie, ForceSeries: e.forceSeries, DryRun: e.dryrun})
