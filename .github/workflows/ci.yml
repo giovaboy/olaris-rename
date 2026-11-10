@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Re-run weekly so newly published vulnerabilities are caught even without commits
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # Use the exact Go/toolchain version declared in go.mod
+          go-version-file: go.mod
+
+      - name: Check formatting
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      # -short skips tests that call the live TMDB API (flaky in CI, rate limited)
+      - name: Test
+        run: go test -short -race ./...
+
+      - name: Build
+        run: go build -o olaris-rename .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: olaris-rename-linux-amd64
+          path: olaris-rename
+          retention-days: 14
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: golang/govulncheck-action@v1
+        with:
+          go-version-file: go.mod
+          go-package: ./...

@@ -17,7 +17,7 @@ func TestExtract(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	e := NewApp(true, "symlink", tmpdir, filepath.Join(tmpdir, "extracted"), tmpdir, false, true, false, "0", false, false)
+	e := NewApp(true, "symlink", tmpdir, filepath.Join(tmpdir, "extracted"), tmpdir, false, false, false, "0", false, false) // no TMDB lookup: this only tests extraction
 	e.StartRun(filepath.Join("test-files", "The.Matrix-1999.mkv.zip"))
 	if err != nil {
 		t.Error(err)
@@ -36,7 +36,7 @@ func TestSmallFile(t *testing.T) {
 	defer os.RemoveAll(tmpdir)
 
 	fmt.Println(tmpdir)
-	e := NewApp(true, "symlink", tmpdir, filepath.Join(tmpdir, "extracted"), tmpdir, false, true, false, "120", false, false)
+	e := NewApp(true, "symlink", tmpdir, filepath.Join(tmpdir, "extracted"), tmpdir, false, false, false, "120", false, false) // no TMDB lookup: this only tests the size check
 	e.StartRun(filepath.Join("test-files", "The.Matrix-1999.mkv"))
 	if err != nil {
 		t.Error(err)
@@ -163,6 +163,7 @@ func TestMove(t *testing.T) {
 	}
 }
 func TestLookup(t *testing.T) {
+	skipTMDBInShortMode(t)
 	log.SetLevel(log.DebugLevel)
 	moreTests := make(map[string]identify.ParsedFile)
 	opts := identify.GetDefaultOptions()
@@ -236,6 +237,7 @@ func TestForceContentType(t *testing.T) {
 }
 
 func TestYearSeasons(t *testing.T) {
+	skipTMDBInShortMode(t)
 	log.SetLevel(log.DebugLevel)
 	tests := make(map[string]identify.ParsedFile)
 	opts := identify.GetDefaultOptions()
@@ -319,4 +321,13 @@ func TestParseContent(t *testing.T) {
 		}
 	}
 
+}
+
+// skipTMDBInShortMode skips tests that depend on the live TMDB API and its (changing) metadata,
+// so `go test -short` (used in CI) is fast and deterministic.
+func skipTMDBInShortMode(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping test that calls the live TMDB API in short mode")
+	}
 }
