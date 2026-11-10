@@ -198,6 +198,10 @@ func (e *App) checkFile(filePath string) {
 
 	file := identify.NewParsedFile(filePath, identify.Options{Lookup: e.tmdbLookup, MovieFormat: *movieFormat, SeriesFormat: *seriesFormat, ForceMovie: e.forceMovie, ForceSeries: e.forceSeries, DryRun: e.dryrun})
 
+	if e.tmdbLookup && (file.IsMovie || file.IsSeries) && file.ExternalID == 0 {
+		log.WithFields(log.Fields{"filePath": filePath, "name": file.CleanName}).Warnln("No TMDB match found: the target name won't contain the TMDB ID, Plex may not match it correctly.")
+	}
+
 	if file.IsMovie {
 		log.Debugln("File is a MovieFile")
 		err = act(file, e.movieFolder, e.action)

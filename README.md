@@ -19,8 +19,16 @@ which support the following placeholders:
 - `{s}` - Season
 - `{e}` - Episode
 - `{x}` - Episode name (TMDB lookup only)
+- `{i}` - TMDB ID (TMDB lookup only), e.g. `{tmdb-{i}}` for Plex
 - `{r}` - Resolution
 - `{q}` - Quality
+
+The defaults follow Plex's naming conventions, e.g.
+`Bluey (2018) {tmdb-82728}/Stagione 03/Bluey - S03E22 - Avvistamento Balene.mkv`.
+Placeholders that resolve to an empty value are cleaned up together with their
+surroundings (`()`, `{tmdb-}`, a trailing ` - `), so a file without year, TMDB
+match and episode name becomes `Bluey/Stagione 03/Bluey - S03E22.mkv`. In names
+and episode titles `/` and `\` are replaced by `-`, and `: * ? " < > |` are removed.
 
 ```
   -action string
@@ -46,7 +54,7 @@ which support the following placeholders:
   -movie-folder string
     	Folder where movies should be placed (default "$HOME/media/Movies")
   -movie-format string
-    	Format used to rename movies. (default "{n} ({y})/{n} ({y}) {r}")
+    	Format used to rename movies. (default "{n} ({y}) {tmdb-{i}}/{n} ({y}) {tmdb-{i}} - {r}")
   -music-folder string
     	Folder where music should be placed (default "$HOME/media/Music")
   -recursive
@@ -54,7 +62,7 @@ which support the following placeholders:
   -series-folder string
     	Folder where series should be placed (default "$HOME/media/TV Shows")
   -series-format string
-    	Format used to rename series. (default "{n}/Stagione {s}/{n} - S{s}E{e} - {x}{r}")
+    	Format used to rename series. (default "{n} ({y}) {tmdb-{i}}/Stagione {s}/{n} - S{s}E{e} - {x}")
   -skip-extracting
     	Disable automatic extraction.
   -tmdb-lookup

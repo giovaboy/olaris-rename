@@ -343,12 +343,27 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 			log.Errorln("Could not locate TV even though we just found an external ID, this shouldn't be possible. Error:", err)
 		}
 		couldTranslate := false
-		for _, s := range details.Seasons {
-			if s.Name == fmt.Sprintf("Season %s", f.Season) {
-				log.Debugln("Found a match for the season name, using season number.")
-				f.Season = strconv.Itoa(s.SeasonNumber)
-				couldTranslate = true
-				break
+		if details != nil {
+			// Season names are localized ("Season 2005", "Stagione 2005", ...) and nowadays TMDB mostly
+			// uses plain numbered seasons ("Stagione 3"), so first try the name and then fall back to
+			// the first regular season that started airing in that year.
+			for _, s := range details.Seasons {
+				if strings.HasSuffix(s.Name, " "+f.Season) {
+					log.Debugln("Found a match for the season name, using season number.")
+					f.Season = fmt.Sprintf("%02d", s.SeasonNumber)
+					couldTranslate = true
+					break
+				}
+			}
+			if !couldTranslate {
+				for _, s := range details.Seasons {
+					if s.SeasonNumber > 0 && strings.HasPrefix(s.AirDate, f.Season) {
+						log.WithFields(log.Fields{"airDate": s.AirDate, "season": s.SeasonNumber}).Debugln("Found a season that started airing in the year used as season, using its season number.")
+						f.Season = fmt.Sprintf("%02d", s.SeasonNumber)
+						couldTranslate = true
+						break
+					}
+				}
 			}
 		}
 		if !couldTranslate {
@@ -358,7 +373,9 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 		log.Warnln("Found an episode that has a year as season but lookup is disabled so not translating season as year to normal season.")
 	}
 
-	if addYearToSeries[f.CleanName] && f.Year != "" {
+	// When the series format already contains the year ({y}) the name doesn't need it as well,
+	// otherwise we'd end up with e.g. "The Flash (2014) (2014)".
+	if addYearToSeries[f.CleanName] && f.Year != "" && !strings.Contains(f.Options.SeriesFormat, "{y}") {
 		log.WithFields(log.Fields{"year": f.Year, "name": f.CleanName}).Debugln("Found seriesname that has multiple series with the same name but different years so adding the year into the final name.")
 		f.CleanName = fmt.Sprintf("%s (%s)", f.CleanName, f.Year)
 	}
@@ -530,25 +547,54 @@ func (p *ParsedFile) TargetName() string {
 		}
 
 		newName = strings.Replace(newName, "{e}", episodeFormatted, -1)
-		newName = strings.Replace(newName, "{x}", p.EpisodeName, -1)
+		newName = strings.Replace(newName, "{x}", sanitizePathComponent(p.EpisodeName), -1)
 	} else {
-		newName = p.Filename
+		return p.Filename + p.Extension
 	}
 
-	newName = strings.Replace(newName, "{n}", p.CleanName, -1)
+	externalID := ""
+	if p.ExternalID > 0 {
+		externalID = strconv.Itoa(p.ExternalID)
+	}
 
+	newName = strings.Replace(newName, "{n}", sanitizePathComponent(p.CleanName), -1)
+	newName = strings.Replace(newName, "{i}", externalID, -1)
 	newName = strings.Replace(newName, "{r}", p.Resolution, -1)
 	newName = strings.Replace(newName, "{q}", p.Quality, -1)
 	newName = strings.Replace(newName, "{y}", p.Year, -1)
-	newName = strings.Trim(newName, " ")
 
-	// Sometimes we end up with an extra dot somehow. This should remove the extra dot
-	// I'm tired, this can probably be done better...
-	if len(newName) > 0 && string(newName[len(newName)-1]) == "." {
-		newName = newName[0 : len(newName)-1]
+	return cleanTargetName(newName) + p.Extension
+}
+
+var (
+	emptyIDTagRegex    = regexp.MustCompile(`\{[a-z]+-\}`) // "{tmdb-}" when there was no TMDB match
+	emptyParensRegex   = regexp.MustCompile(`\(\s*\)`)     // "()" when there was no year
+	multiSpaceRegex    = regexp.MustCompile(`\s{2,}`)
+	trailingDashRegex  = regexp.MustCompile(`(\s+-)+$`) // " -" left over when the episode name or resolution is empty
+	pathUnsafeReplacer = strings.NewReplacer("/", "-", "\\", "-", ":", "", "*", "", "?", "", "\"", "", "<", "", ">", "", "|", "")
+)
+
+// sanitizePathComponent strips characters from a value (e.g. a TMDB title) that would create
+// extra directories or are invalid in Windows/SMB filenames.
+func sanitizePathComponent(s string) string {
+	return pathUnsafeReplacer.Replace(s)
+}
+
+// cleanTargetName removes the leftovers of placeholders that resolved to an empty value, so we
+// never produce names like "Bluey () {tmdb-}/Stagione 03/Bluey - S03E22 - .mkv".
+func cleanTargetName(name string) string {
+	name = emptyIDTagRegex.ReplaceAllString(name, "")
+	name = emptyParensRegex.ReplaceAllString(name, "")
+
+	segments := strings.Split(name, "/")
+	for i, segment := range segments {
+		segment = multiSpaceRegex.ReplaceAllString(segment, " ")
+		segment = trailingDashRegex.ReplaceAllString(strings.TrimSpace(segment), "")
+		// Trailing dots are problematic on Windows and would clash with the extension.
+		segments[i] = strings.TrimRight(strings.TrimSpace(segment), ".")
 	}
 
-	return newName + p.Extension
+	return strings.Join(segments, "/")
 }
 
 // FullName is the original name of the file without the ful path
