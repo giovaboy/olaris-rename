@@ -13,22 +13,22 @@ func TestTargetNameDefaultFormats(t *testing.T) {
 		{
 			name: "series with all data (Plex format)",
 			file: ParsedFile{IsSeries: true, CleanName: "Bluey", Year: "2018", ExternalID: 82728, Season: "03", Episode: "22", EpisodeName: "Avvistamento Balene", Resolution: "1080p", Extension: ".mkv", Options: opts},
-			want: "Bluey (2018) {tmdb-82728}/Stagione 03/Bluey - S03E22 - Avvistamento Balene.mkv",
+			want: "Bluey (2018) {tmdb-82728}/Season 03/Bluey - S03E22 - Avvistamento Balene.mkv",
 		},
 		{
 			name: "series multi-episode",
 			file: ParsedFile{IsSeries: true, CleanName: "Bluey", Year: "2018", ExternalID: 82728, Season: "01", Episode: "22-23", EpisodeName: "A & B", Extension: ".mkv", Options: opts},
-			want: "Bluey (2018) {tmdb-82728}/Stagione 01/Bluey - S01E22-E23 - A & B.mkv",
+			want: "Bluey (2018) {tmdb-82728}/Season 01/Bluey - S01E22-E23 - A & B.mkv",
 		},
 		{
 			name: "series without TMDB match, year and episode name",
 			file: ParsedFile{IsSeries: true, CleanName: "Bluey", Season: "03", Episode: "22", Extension: ".mkv", Options: opts},
-			want: "Bluey/Stagione 03/Bluey - S03E22.mkv",
+			want: "Bluey/Season 03/Bluey - S03E22.mkv",
 		},
 		{
 			name: "series with unsafe characters in titles",
 			file: ParsedFile{IsSeries: true, CleanName: "Face/Off", Year: "2020", ExternalID: 1, Season: "01", Episode: "01", EpisodeName: "Parte 1/2: Inizio?", Extension: ".mkv", Options: opts},
-			want: "Face-Off (2020) {tmdb-1}/Stagione 01/Face-Off - S01E01 - Parte 1-2 Inizio.mkv",
+			want: "Face-Off (2020) {tmdb-1}/Season 01/Face-Off - S01E01 - Parte 1-2 Inizio.mkv",
 		},
 		{
 			name: "movie with all data",

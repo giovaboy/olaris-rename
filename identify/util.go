@@ -8,15 +8,16 @@ import (
 
 const tmdbAPIKey = "0cdacd9ab172ac6ff69c8d84b2c938a8"
 
-// Default formats follow Plex's naming conventions, with the TMDB ID hint in the folder name:
+// Default formats follow Plex's naming conventions, with the TMDB ID hint in the folder name.
+// Season folders must use the English word "Season" whatever the content language (Plex docs).
 //
-//	Bluey (2018) {tmdb-82728}/Stagione 03/Bluey - S03E22 - Avvistamento Balene.mkv
+//	Bluey (2018) {tmdb-82728}/Season 03/Bluey - S03E22 - Avvistamento Balene.mkv
 //	Avatar (2009) {tmdb-19995}/Avatar (2009) {tmdb-19995} - 1080p.mkv
 //
 // Parts that resolve to an empty value (no year, no TMDB match, no episode name, no resolution)
 // are cleaned up by cleanTargetName.
 const DefaultMovieFormat = "{n} ({y}) {tmdb-{i}}/{n} ({y}) {tmdb-{i}} - {r}"
-const DefaultSeriesFormat = "{n} ({y}) {tmdb-{i}}/Stagione {s}/{n} - S{s}E{e} - {x}"
+const DefaultSeriesFormat = "{n} ({y}) {tmdb-{i}}/Season {s}/{n} - S{s}E{e} - {x}"
 const DefaultTMDBLanguage = "it"
 
 var addYearToSeries = map[string]bool{

@@ -581,7 +581,7 @@ func sanitizePathComponent(s string) string {
 }
 
 // cleanTargetName removes the leftovers of placeholders that resolved to an empty value, so we
-// never produce names like "Bluey () {tmdb-}/Stagione 03/Bluey - S03E22 - .mkv".
+// never produce names like "Bluey () {tmdb-}/Season 03/Bluey - S03E22 - .mkv".
 func cleanTargetName(name string) string {
 	name = emptyIDTagRegex.ReplaceAllString(name, "")
 	name = emptyParensRegex.ReplaceAllString(name, "")

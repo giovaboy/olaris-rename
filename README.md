@@ -24,10 +24,10 @@ which support the following placeholders:
 - `{q}` - Quality
 
 The defaults follow Plex's naming conventions, e.g.
-`Bluey (2018) {tmdb-82728}/Stagione 03/Bluey - S03E22 - Avvistamento Balene.mkv`.
+`Bluey (2018) {tmdb-82728}/Season 03/Bluey - S03E22 - Avvistamento Balene.mkv`.
 Placeholders that resolve to an empty value are cleaned up together with their
 surroundings (`()`, `{tmdb-}`, a trailing ` - `), so a file without year, TMDB
-match and episode name becomes `Bluey/Stagione 03/Bluey - S03E22.mkv`. In names
+match and episode name becomes `Bluey/Season 03/Bluey - S03E22.mkv`. In names
 and episode titles `/` and `\` are replaced by `-`, and `: * ? " < > |` are removed.
 
 ```
@@ -62,7 +62,7 @@ and episode titles `/` and `\` are replaced by `-`, and `: * ? " < > |` are remo
   -series-folder string
     	Folder where series should be placed (default "$HOME/media/TV Shows")
   -series-format string
-    	Format used to rename series. (default "{n} ({y}) {tmdb-{i}}/Stagione {s}/{n} - S{s}E{e} - {x}")
+    	Format used to rename series. (default "{n} ({y}) {tmdb-{i}}/Season {s}/{n} - S{s}E{e} - {x}")
   -skip-extracting
     	Disable automatic extraction.
   -tmdb-lookup
