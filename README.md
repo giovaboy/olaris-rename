@@ -54,7 +54,7 @@ and episode titles `/` and `\` are replaced by `-`, and `: * ? " < > |` are remo
   -movie-folder string
     	Folder where movies should be placed (default "$HOME/media/Movies")
   -movie-format string
-    	Format used to rename movies. (default "{n} ({y}) {tmdb-{i}}/{n} ({y}) {tmdb-{i}} - {r}")
+    	Format used to rename movies. (default "{n} ({y}) {tmdb-{i}} {edition-{ed}}/{n} ({y}) {tmdb-{i}} {edition-{ed}} - {r}")
   -music-folder string
     	Folder where music should be placed (default "$HOME/media/Music")
   -recursive
@@ -104,3 +104,47 @@ release numbering (often TheTVDB) can differ from TMDB's:
 (1 exact, 0.9 one title contains the other, otherwise shared words), the
 score of the runner-up and whether the match is certain. File names without
 titles are handled as before.
+
+### Episode numbers
+
+`S01E05`, `1x05` and episode numbers of 3-4 digits (`S35E100`) are
+supported. Multi-episode files keep the whole range: `S01E01E02E03`,
+`S01E01-E03` and `S01E01-03` all become `S01E01-E03`.
+
+### ID tags in names
+
+An ID tag in the file name or in a parent folder picks the show or movie on
+TMDB directly, instead of a search by name. The closest tag wins:
+
+    Bluey (2018) {tmdb-82728}/Season 03/Bluey - S03E22.mkv
+    Avatar (2009) [imdbid-tt0499549] - 1080p.mkv
+    Some Show {tvdb-353546}/Season 01/Some Show - S01E01.mkv
+
+Plex style `{tmdb-…}`, `{imdb-tt…}`, `{tvdb-…}` and Jellyfin/Emby style
+`[tmdbid-…]`, `[imdbid-tt…]`, `[tvdbid-…]` are recognised. If TMDB does not
+know the ID, the usual search by name is used. Tags are never mistaken for
+a year or for part of the name.
+
+### Movie editions
+
+Movies get a Plex `{edition-…}` tag (format placeholder `{ed}`), from an
+explicit `{edition-…}` in the file name or from the usual release words
+after the year: Extended, Director's Cut, Theatrical, Unrated, Uncut, Final
+Cut, Ultimate Edition, Special Edition, Collector's Edition, Anniversary
+Edition, Remastered, IMAX, Criterion, Redux, Open Matte. Words before the
+year belong to the title (`The.Final.Cut.2004` has no edition). Every
+edition gets its own folder:
+
+    Avatar (2009) {tmdb-19995} {edition-Extended}/Avatar (2009) {tmdb-19995} {edition-Extended} - 1080p.mkv
+
+### Subtitles
+
+Subtitle files next to the video (`.srt .ass .ssa .sub .idx .vtt .sup .smi`)
+named like the video, optionally followed by language and flags, are moved
+(copied, linked) together with it, keeping that suffix:
+
+    Avatar.2009.1080p.BluRay.it.forced.srt
+    → Avatar (2009) {tmdb-19995}/Avatar (2009) {tmdb-19995} - 1080p.it.forced.srt
+
+They are listed in the JSON result as `subtitles` (`source`, `target`).
+Subtitles in a separate `Subs` folder are not handled.

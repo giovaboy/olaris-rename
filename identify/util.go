@@ -13,10 +13,11 @@ const tmdbAPIKey = "0cdacd9ab172ac6ff69c8d84b2c938a8"
 //
 //	Bluey (2018) {tmdb-82728}/Season 03/Bluey - S03E22 - Avvistamento Balene.mkv
 //	Avatar (2009) {tmdb-19995}/Avatar (2009) {tmdb-19995} - 1080p.mkv
+//	Avatar (2009) {tmdb-19995} {edition-Extended}/Avatar (2009) {tmdb-19995} {edition-Extended} - 1080p.mkv
 //
-// Parts that resolve to an empty value (no year, no TMDB match, no episode name, no resolution)
+// Parts that resolve to an empty value (no year, no TMDB match, no edition, no episode name, no resolution)
 // are cleaned up by cleanTargetName.
-const DefaultMovieFormat = "{n} ({y}) {tmdb-{i}}/{n} ({y}) {tmdb-{i}} - {r}"
+const DefaultMovieFormat = "{n} ({y}) {tmdb-{i}} {edition-{ed}}/{n} ({y}) {tmdb-{i}} {edition-{ed}} - {r}"
 const DefaultSeriesFormat = "{n} ({y}) {tmdb-{i}}/Season {s}/{n} - S{s}E{e} - {x}"
 const DefaultTMDBLanguage = "it"
 
@@ -76,8 +77,8 @@ var matchers = map[string]*regexp.Regexp{
 	"year":         regexp.MustCompile(`([\[\(]?((?:19[0-9]|20[012])[0-9])[\]\)]?)`),
 	"season":       regexp.MustCompile("(?i)(s?([0-9]{1,2}))[EX]"),
 	"yearAsSeason": regexp.MustCompile("(?i)(s?([0-9]{4}))[EX]"),
-	"episode":      regexp.MustCompile("(?i)[EX]([0-9]{2})(?:-?[EX]?([0-9]{2}))?"),
-	//"episode":      regexp.MustCompile("(?i)[EX]([0-9]{2})(?:[^0-9]|$)"),
+	// E01, E100, E1071; ranges E01E02E03, E01-E03, E01-03 (see parseEpisodeMatch)
+	"episode":      regexp.MustCompile("(?i)[EX]([0-9]{2,4})((?:-?[EX][0-9]{2,4}|-[0-9]{2,4})*)"),
 	"resolution":   regexp.MustCompile("(?i)(([0-9]{3,4}p))"),
 	"audio":        regexp.MustCompile("MP3|DD5\\.?1|Dual[\\- ]Audio|LiNE|DTS|AAC(?:\\.?2\\.0)?|AC3(?:\\.5\\.1)?"),
 	"quality":      regexp.MustCompile("((?:PPV\\.)?[HP]DTV|(?:HD)?CAM|B[DR]Rip|(?:HD-?)?TS|(?:PPV )?WEB-?DL(?: DVDRip)?|HDRip|DVDRip|DVDRIP|CamRip|W[EB]BRip|BluRay|DvDScr|hdtv|telesync)"),

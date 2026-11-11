@@ -11,6 +11,7 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
+	"github.com/ryanbradynd05/go-tmdb"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -44,6 +45,11 @@ type ParsedFile struct {
 	FileEpisode  string
 	NeedsReview  bool
 	ReviewReason string
+
+	// ID tag found in the file or folder names ({tmdb-123}, [imdbid-tt...])
+	IDTag *IDTag
+	// Movie edition for Plex ({edition-...}), e.g. "Extended", "Director's Cut"
+	Edition string
 
 	hasYearAsSeason bool
 }
@@ -173,6 +179,9 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 	filename := strings.TrimSuffix(filePath, origExt)
 	filename = filepath.Base(filename)
 	f.Filename = filename
+	// ID and edition tags ({tmdb-123}, {edition-Extended}) are read on their
+	// own: their digits must not look like a year, nor their text like a name
+	filename = stripEditionTags(stripIDTags(filename))
 	// Normalize extension to lowercase for map lookups and target naming
 	f.Extension = strings.ToLower(origExt)
 	log.WithFields(log.Fields{"file": f.Filename}).Debugln("Checking file")
@@ -201,38 +210,7 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 						log.Debugln("We already have found a season earlier so skipping the normal season match.")
 					}
 				case "episode":
-					// Parse the episode string using both the original regex groups and our parser
-					// res[0] = full match (e.g., "E22E23")
-					// res[1] = first episode number (e.g., "22")
-					// res[2] = second episode number if present (e.g., "23")
-
-					// Try ParseEpisodeString first with the full match
-					episodeInfo, err := ParseEpisodeString(res[0])
-
-					if err != nil {
-						// Fallback: use the regex captured groups directly
-						log.WithFields(log.Fields{"raw": res[0], "error": err}).Debugln("ParseEpisodeString failed, using regex groups")
-
-						// Check if we have a second episode (range)
-						if len(res) > 2 && res[2] != "" {
-							// Format as range: "22-23" (clean internal representation)
-							ep1, _ := strconv.Atoi(res[1])
-							ep2, _ := strconv.Atoi(res[2])
-							f.Episode = fmt.Sprintf("%02d-%02d", ep1, ep2)
-						} else {
-							// Single episode: "22"
-							ep, _ := strconv.Atoi(res[1])
-							f.Episode = fmt.Sprintf("%02d", ep)
-						}
-					} else {
-						// Successfully parsed - format the result
-						if episodeInfo.IsRange {
-							// Store clean range: "22-23"
-							f.Episode = fmt.Sprintf("%02d-%02d", episodeInfo.Start, episodeInfo.End)
-						} else {
-							f.Episode = fmt.Sprintf("%02d", episodeInfo.Start)
-						}
-					}
+					f.Episode = parseEpisodeMatch(res)
 				case "quality":
 					f.Quality = res[1]
 				case "resolution":
@@ -248,7 +226,7 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 			}
 		}
 
-		cleanName := strings.Replace(f.Filename, ".", " ", -1)
+		cleanName := strings.Replace(filename, ".", " ", -1)
 
 		if !f.IsMusic {
 			log.WithFields(log.Fields{"cleanName": cleanName, "year": f.Year, "episode": f.Episode, "season": f.Season}).Debugln("Pre-parsing done, initial result.")
@@ -339,6 +317,16 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 		return f
 	}
 
+	if f.IsMovie {
+		f.Edition = movieEdition(f.Filename, f.Year)
+	}
+
+	tagPath := filePath
+	if opts.OriginalFile != "" {
+		tagPath = opts.OriginalFile
+	}
+	f.IDTag = findIDTag(tagPath)
+
 	if opts.Lookup {
 		queryTmdb(&f)
 	}
@@ -419,29 +407,18 @@ func queryTmdb(p *ParsedFile) error {
 
 	log.WithFields(log.Fields{"year": p.Year, "title": p.CleanName}).Debugln("Trying to locate data from TMDB")
 	if p.IsSeries {
-		searchRes, err := agent.SearchTv(p.CleanName, options)
+		tv, err := p.findShow(agent, options)
 		if err != nil {
-			log.WithFields(log.Fields{"name": p.CleanName, "error": err}).Warnln("Got an error from TMDB")
 			return err
 		}
 
-		if len(searchRes.Results) > 0 {
-			tv := searchRes.Results[0]
-			if p.Year != "" {
-				bestPopularity := float32(-1)
-				for _, candidate := range searchRes.Results {
-					if strings.HasPrefix(candidate.FirstAirDate, p.Year) && candidate.Popularity > bestPopularity {
-						tv = candidate
-						bestPopularity = candidate.Popularity
-					}
-				}
-			}
+		if tv != nil {
 			log.Debugln("TV:", tv)
 			p.ExternalID = tv.ID
 			p.ExternalName = tv.Name
 			p.CleanName = tv.Name
-			if tv.FirstAirDate != "" && p.Year == "" {
-				p.Year = strings.Split(tv.FirstAirDate, "-")[0]
+			if tv.Date != "" && p.Year == "" {
+				p.Year = strings.Split(tv.Date, "-")[0]
 			}
 
 			// IMPROVED: Retrieve Episode Name(s) for single or multiple episodes
@@ -502,29 +479,20 @@ func queryTmdb(p *ParsedFile) error {
 		}
 
 	} else if p.IsMovie {
-		searchRes, err := agent.SearchMovie(p.CleanName, options)
+		mov, err := p.findMovie(agent, options)
 		if err != nil {
-			log.WithFields(log.Fields{"name": p.CleanName, "error": err}).Warnln("Got an error from TMDB")
 			return err
 		}
 
-		if len(searchRes.Results) > 0 {
-			mov := searchRes.Results[0]
-			if p.Year != "" {
-				bestPopularity := float32(-1)
-				for _, candidate := range searchRes.Results {
-					if strings.HasPrefix(candidate.ReleaseDate, p.Year) && candidate.Popularity > bestPopularity {
-						mov = candidate
-						bestPopularity = candidate.Popularity
-					}
-				}
-			}
+		if mov != nil {
 			log.Debugln("Movie:", mov)
 
 			p.ExternalID = mov.ID
-			p.ExternalName = mov.Title
-			p.CleanName = mov.Title
-
+			p.ExternalName = mov.Name
+			p.CleanName = mov.Name
+			if mov.Date != "" && p.Year == "" {
+				p.Year = strings.Split(mov.Date, "-")[0]
+			}
 		} else {
 			log.Debugln("No results found on TMDB")
 		}
@@ -533,6 +501,68 @@ func queryTmdb(p *ParsedFile) error {
 	log.WithFields(log.Fields{"externalID": p.ExternalID, "externalName": p.ExternalName}).Debugln("Received TMDB results.")
 
 	return nil
+}
+
+// findShow: the show of the ID tag in the names, otherwise the TMDB search by
+// name (the most popular result of the year, when the year is known).
+func (p *ParsedFile) findShow(agent *tmdb.TMDb, options map[string]string) (*tmdbHit, error) {
+	if p.IDTag != nil {
+		if hit := lookupIDTag(agent, p.IDTag, true, p.Options.TMDBLanguage); hit != nil {
+			log.WithFields(log.Fields{"tag": p.IDTag.String(), "id": hit.ID, "name": hit.Name}).Debugln("Show found from the ID tag in the name.")
+			return hit, nil
+		}
+	}
+
+	searchRes, err := agent.SearchTv(p.CleanName, options)
+	if err != nil {
+		log.WithFields(log.Fields{"name": p.CleanName, "error": err}).Warnln("Got an error from TMDB")
+		return nil, err
+	}
+	if len(searchRes.Results) == 0 {
+		return nil, nil
+	}
+	tv := searchRes.Results[0]
+	if p.Year != "" {
+		bestPopularity := float32(-1)
+		for _, candidate := range searchRes.Results {
+			if strings.HasPrefix(candidate.FirstAirDate, p.Year) && candidate.Popularity > bestPopularity {
+				tv = candidate
+				bestPopularity = candidate.Popularity
+			}
+		}
+	}
+	return &tmdbHit{ID: tv.ID, Name: tv.Name, Date: tv.FirstAirDate}, nil
+}
+
+// findMovie: the movie of the ID tag in the names, otherwise the TMDB search
+// by name (the most popular result of the year, when the year is known).
+func (p *ParsedFile) findMovie(agent *tmdb.TMDb, options map[string]string) (*tmdbHit, error) {
+	if p.IDTag != nil {
+		if hit := lookupIDTag(agent, p.IDTag, false, p.Options.TMDBLanguage); hit != nil {
+			log.WithFields(log.Fields{"tag": p.IDTag.String(), "id": hit.ID, "name": hit.Name}).Debugln("Movie found from the ID tag in the name.")
+			return hit, nil
+		}
+	}
+
+	searchRes, err := agent.SearchMovie(p.CleanName, options)
+	if err != nil {
+		log.WithFields(log.Fields{"name": p.CleanName, "error": err}).Warnln("Got an error from TMDB")
+		return nil, err
+	}
+	if len(searchRes.Results) == 0 {
+		return nil, nil
+	}
+	mov := searchRes.Results[0]
+	if p.Year != "" {
+		bestPopularity := float32(-1)
+		for _, candidate := range searchRes.Results {
+			if strings.HasPrefix(candidate.ReleaseDate, p.Year) && candidate.Popularity > bestPopularity {
+				mov = candidate
+				bestPopularity = candidate.Popularity
+			}
+		}
+	}
+	return &tmdbHit{ID: mov.ID, Name: mov.Title, Date: mov.ReleaseDate}, nil
 }
 
 // TargetName is the name the file should be renamed to
@@ -577,6 +607,8 @@ func (p *ParsedFile) TargetName() string {
 	newName = strings.Replace(newName, "{r}", p.Resolution, -1)
 	newName = strings.Replace(newName, "{q}", p.Quality, -1)
 	newName = strings.Replace(newName, "{y}", p.Year, -1)
+	// "}" would close the {edition-...} tag early
+	newName = strings.Replace(newName, "{ed}", strings.NewReplacer("{", "", "}", "").Replace(sanitizePathComponent(p.Edition)), -1)
 
 	return cleanTargetName(newName) + p.Extension
 }
@@ -657,4 +689,30 @@ func properTitleCase(s string) string {
 		}
 	}
 	return strings.Join(words, " ")
+}
+
+// Longest span accepted for a multi-episode file: "S01E02-1080p" is not
+// episodes 2 to 1080.
+const maxEpisodeSpan = 20
+
+var digitsRegex = regexp.MustCompile(`[0-9]+`)
+
+// parseEpisodeMatch turns a match of the "episode" matcher into the internal
+// representation: "05", "100", or "01-03" for a multi-episode file
+// (E01E02E03, E01-E03, E01-03). The last number is the end of the range.
+func parseEpisodeMatch(res []string) string {
+	start, _ := strconv.Atoi(res[1])
+	end := start
+	if len(res) > 2 {
+		if nums := digitsRegex.FindAllString(res[2], -1); len(nums) > 0 {
+			end, _ = strconv.Atoi(nums[len(nums)-1])
+		}
+	}
+	if end <= start || end-start > maxEpisodeSpan {
+		if end != start {
+			log.WithFields(log.Fields{"raw": res[0], "start": start, "end": end}).Debugln("Ignoring an implausible episode range, using the first episode.")
+		}
+		return fmt.Sprintf("%02d", start)
+	}
+	return fmt.Sprintf("%02d-%02d", start, end)
 }

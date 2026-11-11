@@ -70,6 +70,11 @@ type ActionResult struct {
 	// is only the name it would get with the numbering of the file name
 	NeedsReview  bool   `json:"needsReview"`
 	ReviewReason string `json:"reviewReason,omitempty"`
+
+	// Movie edition, written as {edition-...} by the default movie format
+	Edition string `json:"edition,omitempty"`
+	// Subtitle files next to the video, acted on together with it
+	Subtitles []SubtitleResult `json:"subtitles,omitempty"`
 }
 
 var actions = map[string]bool{
@@ -161,6 +166,10 @@ func (e *App) minFileSizeBytes() int64 {
 func (e *App) walkRecursive(dir string) error {
 	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			// Moved meanwhile, e.g. a subtitle that followed its video
+			if os.IsNotExist(err) {
+				return nil
+			}
 			return err
 		}
 
@@ -179,6 +188,10 @@ func (e *App) checkFile(filePath string) {
 	ext := strings.ToLower(filepath.Ext(filePath))
 
 	info, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		log.WithFields(log.Fields{"filePath": filePath}).Debugln("File is gone, probably moved together with its video.")
+		return
+	}
 	if err != nil {
 		log.WithFields(log.Fields{"error": err, "filePath": filePath}).Errorln("received error while statting file.")
 		return
@@ -240,10 +253,12 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 	}
 
 	targetLocation := filepath.Join(targetFolder, p.TargetName())
+	subtitles := sidecarSubtitles(source, targetLocation)
 
 	if p.NeedsReview {
 		log.WithFields(log.Fields{"source": source, "target": targetLocation, "reason": p.ReviewReason}).Warnln("No certain match for this episode, not acting on file.")
 		action = "none"
+		subtitles = nil
 	} else if !p.Options.DryRun {
 		err = ensurePath(filepath.Dir(targetLocation))
 		if err != nil {
@@ -256,45 +271,30 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 			return nil
 		}
 
-		if action == "symlink" {
-			source, err = filepath.EvalSymlinks(source)
-			if err != nil {
-				log.WithFields(log.Fields{"targetLocation": filepath.Dir(targetLocation), "source": source, "err": err}).Debugln("error during symlink evaluation")
-				return err
-			}
-
-			log.WithFields(log.Fields{"source": source, "target": targetLocation}).Debugln("Evaling symlinks")
-			source, err = filepath.Rel(filepath.Dir(targetLocation), source)
-
-			if err != nil {
-				log.WithFields(log.Fields{"targetLocation": filepath.Dir(targetLocation), "source": source, "err": err}).Debugln("error during Rel call")
-				return err
-			}
-
-			log.WithFields(log.Fields{"target": targetLocation, "source": source, "action": action}).Infoln("Using relative path for symlinks.")
-
-			err = os.Symlink(source, targetLocation)
-			if err != nil {
-				return err
-			}
-		} else if action == "hardlink" {
-			err = os.Link(source, targetLocation)
-			if err != nil {
-				return err
-			}
-		} else if action == "copy" {
-			err := copyFileContents(source, targetLocation)
-			if err != nil {
-				return err
-			}
-		} else if action == "move" {
-			err := os.Rename(source, targetLocation)
-			if err != nil {
-				return err
-			}
+		if err := actOnFile(source, targetLocation, action); err != nil {
+			return err
 		}
+
+		// The subtitles follow the video; a failure does not undo the video
+		done := subtitles[:0]
+		for _, s := range subtitles {
+			if _, err := os.Lstat(s.Target); err == nil {
+				log.WithFields(log.Fields{"target": s.Target}).Warnln("Subtitle already exists, leaving it.")
+				continue
+			}
+			if err := actOnFile(s.Source, s.Target, action); err != nil {
+				log.WithFields(log.Fields{"source": s.Source, "target": s.Target, "error": err}).Warnln("Could not act on subtitle")
+				continue
+			}
+			log.WithFields(log.Fields{"source": s.Source, "target": s.Target, "action": action}).Infoln("Acted on subtitle")
+			done = append(done, s)
+		}
+		subtitles = done
 	} else {
 		log.WithFields(log.Fields{"target": targetLocation, "source": source, "action": action}).Infoln("--dry-run enabled, not acting on file")
+		for _, s := range subtitles {
+			log.WithFields(log.Fields{"target": s.Target, "source": s.Source, "action": action}).Infoln("--dry-run enabled, not acting on subtitle")
+		}
 	}
 
 	// Collect JSON results instead of writing immediately
@@ -320,6 +320,8 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 			FileEpisode:  p.FileEpisode,
 			NeedsReview:  p.NeedsReview,
 			ReviewReason: p.ReviewReason,
+			Edition:      p.Edition,
+			Subtitles:    subtitles,
 		}
 
 		// Thread-safe append to results array

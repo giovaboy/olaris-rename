@@ -116,7 +116,7 @@ type TitleResult struct {
 
 var (
 	// SxxEyy (with optional -Ezz/Ezz) or NxNN: the episode titles follow it
-	episodeMarker = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(s\d{1,4}e\d{1,3}(?:-?e\d{1,3})*(?:-\d{1,3})?|\d{1,2}x\d{2,3}(?:-\d{1,3})?)(?:[^a-z0-9]|$)`)
+	episodeMarker = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(s\d{1,4}e\d{1,4}(?:-?e\d{1,4})*(?:-\d{1,4})?|\d{1,2}x\d{2,4}(?:-\d{1,4})?)(?:[^a-z0-9]|$)`)
 	// First technical token after the titles (quality, resolution, codec, ...)
 	releaseTail  = regexp.MustCompile(`(?i)(?:^|[\s\[\(._-])(?:\d{3,4}[pi]|[hps]dtv|hdtv\w*|web[-. ]?(?:dl|rip)\w*|web[-. ]\d{3,4}p|blu-?ray\w*|bd-?rip|br-?rip|dvd(?:rip|scr|r)?|hdrip|remux|raw-hd|x26[45]|h\.?26[45]|hevc|xvid|divx|proper|repack|aac\w*|ac3|e-?ac-?3|dd[p+]?\d\.?\d|10bit)(?:[\s\]\)._-]|$)`)
 	languageTail = regexp.MustCompile(`(?:^|[\s\[\(._-])(?:iTA|ITA|ENG|SUBITA|Sub[- ]?ITA)(?:[\s\]\)._-]|$)`)

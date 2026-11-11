@@ -245,3 +245,31 @@ func BenchmarkParseEpisodeStringComplex(b *testing.B) {
 		}
 	}
 }
+
+// Episode numbers in file names: 3-4 digits and ranges of any length
+func TestEpisodeNumbersInFilenames(t *testing.T) {
+	tests := []struct {
+		file, season, episode, target string
+	}{
+		{"The.Simpsons.S35E100.720p.mkv", "35", "100", "The Simpsons/Season 35/The Simpsons - S35E100.mkv"},
+		{"One.Piece.S20E1071.1080p.WEB.mkv", "20", "1071", "One Piece/Season 20/One Piece - S20E1071.mkv"},
+		{"Show.S01E01E02E03.720p.mkv", "01", "01-03", "Show/Season 01/Show - S01E01-E03.mkv"},
+		{"Show.S01E01-E03.720p.mkv", "01", "01-03", "Show/Season 01/Show - S01E01-E03.mkv"},
+		{"Show.S01E01-03.720p.mkv", "01", "01-03", "Show/Season 01/Show - S01E01-E03.mkv"},
+		{"Show.S01E22E23.mkv", "01", "22-23", "Show/Season 01/Show - S01E22-E23.mkv"},
+		{"Show.1x05.mkv", "01", "05", "Show/Season 01/Show - S01E05.mkv"},
+		// Not a range: the resolution follows the episode
+		{"Show - S01E02-1080p.mkv", "01", "02", "Show/Season 01/Show - S01E02.mkv"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.file, func(t *testing.T) {
+			p := NewParsedFile(tt.file, Options{Lookup: false})
+			if p.Season != tt.season || p.Episode != tt.episode {
+				t.Errorf("got S%sE%s, want S%sE%s", p.Season, p.Episode, tt.season, tt.episode)
+			}
+			if got := p.TargetName(); got != tt.target {
+				t.Errorf("TargetName() = %q, want %q", got, tt.target)
+			}
+		})
+	}
+}
