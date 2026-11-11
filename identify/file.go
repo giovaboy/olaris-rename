@@ -35,6 +35,16 @@ type ParsedFile struct {
 	OriginalFile string
 	Options      Options
 
+	// Outcome of comparing the episode titles in the file name with TMDB
+	// (see episode_titles.go). FileSeason/FileEpisode keep the numbering of
+	// the file name when the titles changed it.
+	TitleCheck   string
+	TitleMatches []TitleMatch
+	FileSeason   string
+	FileEpisode  string
+	NeedsReview  bool
+	ReviewReason string
+
 	hasYearAsSeason bool
 }
 
@@ -447,6 +457,11 @@ func queryTmdb(p *ParsedFile) error {
 				log.WithFields(log.Fields{"episode": p.Episode, "error": err}).Warnln("Could not parse episode string")
 				// Continue anyway, we can still try with just the first part
 				episodeInfo = &EpisodeInfo{Start: 1, End: 1, IsRange: false}
+			}
+
+			titleRes := p.checkEpisodeTitles(tv.ID, seasonNum, episodeInfo)
+			if titleRes.Status == TitlesResolved {
+				return nil
 			}
 
 			// Fetch episode names for all episodes in the range

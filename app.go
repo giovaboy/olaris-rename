@@ -56,6 +56,20 @@ type ActionResult struct {
 	IsSeries     bool   `json:"isSeries"`
 	Resolution   string `json:"resolution"`
 	Quality      string `json:"quality"`
+
+	// Episode titles in the file name compared with TMDB (series only):
+	// "resolved" (season/episode come from the titles), "keep" (the titles do
+	// not contradict SxxEyy), "review" (they do and it cannot be resolved).
+	// Empty when the file name has no titles.
+	TitleCheck   string                `json:"titleCheck,omitempty"`
+	TitleMatches []identify.TitleMatch `json:"titleMatches,omitempty"`
+	// Numbering of the file name, when the titles changed it
+	FileSeason  string `json:"fileSeason,omitempty"`
+	FileEpisode string `json:"fileEpisode,omitempty"`
+	// No certain match: the file was not touched (action "none") and target
+	// is only the name it would get with the numbering of the file name
+	NeedsReview  bool   `json:"needsReview"`
+	ReviewReason string `json:"reviewReason,omitempty"`
 }
 
 var actions = map[string]bool{
@@ -227,7 +241,10 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 
 	targetLocation := filepath.Join(targetFolder, p.TargetName())
 
-	if !p.Options.DryRun {
+	if p.NeedsReview {
+		log.WithFields(log.Fields{"source": source, "target": targetLocation, "reason": p.ReviewReason}).Warnln("No certain match for this episode, not acting on file.")
+		action = "none"
+	} else if !p.Options.DryRun {
 		err = ensurePath(filepath.Dir(targetLocation))
 		if err != nil {
 			return err
@@ -297,6 +314,12 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 			IsSeries:     p.IsSeries,
 			Resolution:   p.Resolution,
 			Quality:      p.Quality,
+			TitleCheck:   p.TitleCheck,
+			TitleMatches: p.TitleMatches,
+			FileSeason:   p.FileSeason,
+			FileEpisode:  p.FileEpisode,
+			NeedsReview:  p.NeedsReview,
+			ReviewReason: p.ReviewReason,
 		}
 
 		// Thread-safe append to results array

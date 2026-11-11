@@ -77,3 +77,30 @@ With `--json-output=true`, results are printed to stdout prefixed with
 `JSON_RESULTS:` (a single object if only one file was processed, an array
 otherwise). Pass `--json-output-file <path>` to write the results to a file
 instead.
+
+### Episode titles in the file name
+
+When a series file name has episode titles after `SxxEyy` (several segments
+joined with ` + ` or ` & `), they are compared with the titles of every
+episode of the show on TMDB, in the TMDB language and in English. The
+release numbering (often TheTVDB) can differ from TMDB's:
+
+    Taz-Mania - S02E05 - Tazmanian Lullaby + Deer Taz + A Taz-Manian Moment HDTV-720p.mkv
+    → Tazmania (1991) {tmdb-10126}/Season 02/Tazmania - S02E08-E10 - ….mkv
+
+- every title matches one episode with certainty, in the same season and
+  consecutive: that episode range is used (`titleCheck: "resolved"`,
+  `fileSeason`/`fileEpisode` keep the numbering of the file name when it
+  differs);
+- the titles do not contradict `SxxEyy` (they match those episodes, or match
+  nothing on TMDB): the numbering of the file name is kept
+  (`titleCheck: "keep"`);
+- the titles point elsewhere and the episodes cannot be determined: the file
+  is **not touched**. Its JSON result has `action: "none"`,
+  `needsReview: true`, `titleCheck: "review"` and `reviewReason`; `target` is
+  only the name it would get from the numbering of the file name.
+
+`titleMatches` lists, for each title, the best TMDB episode, its score
+(1 exact, 0.9 one title contains the other, otherwise shared words), the
+score of the runner-up and whether the match is certain. File names without
+titles are handled as before.

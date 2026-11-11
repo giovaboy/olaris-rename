@@ -243,7 +243,10 @@ func TestYearSeasons(t *testing.T) {
 	opts := identify.GetDefaultOptions()
 	opts.TMDBLanguage = "en"
 	opts.Lookup = true
-	tests["MythBusters.S2005E03.Brown.Note.mkv"] = identify.ParsedFile{Options: opts, Filename: "Mythbusters.S2005E03.Brown.Note", Extension: ".mkv", Filepath: "Mythbusters.S2005E03.Brown.Note.mkv", Year: "2003", IsSeries: true, ExternalID: 1428, CleanName: "MythBusters", Season: "03", Episode: "03"}
+	// No title: the year is translated to the season, the episode number is kept
+	tests["MythBusters.S2005E03.720p.mkv"] = identify.ParsedFile{Options: opts, Filename: "Mythbusters.S2005E03.720p", Extension: ".mkv", Filepath: "Mythbusters.S2005E03.720p.mkv", Year: "2003", IsSeries: true, ExternalID: 1428, CleanName: "MythBusters", Season: "03", Episode: "03", Resolution: "720p"}
+	// The title is TMDB S03E01, whatever the numbering of the file name
+	tests["MythBusters.S2005E03.Brown.Note.mkv"] = identify.ParsedFile{Options: opts, Filename: "Mythbusters.S2005E03.Brown.Note", Extension: ".mkv", Filepath: "Mythbusters.S2005E03.Brown.Note.mkv", Year: "2003", IsSeries: true, ExternalID: 1428, CleanName: "MythBusters", Season: "03", Episode: "01", EpisodeName: "Brown Note"}
 
 	for name, mi := range tests {
 		newMi := identify.NewParsedFile(name, opts)
