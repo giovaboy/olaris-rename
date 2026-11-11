@@ -148,3 +148,26 @@ named like the video, optionally followed by language and flags, are moved
 
 They are listed in the JSON result as `subtitles` (`source`, `target`).
 Subtitles in a separate `Subs` folder are not handled.
+
+### Anime style names
+
+Fansub names without `SxxEyy` are read as well, also with 3-4 digit
+numbers and version suffixes (`05v2`):
+
+    [SubsPlease] Frieren - 12 (1080p) [ABCD1234].mkv   → absolute episode 12
+    [Erai-raws] One Piece - 1071 [1080p].mkv           → absolute episode 1071
+    [Group] Show S2 - 05 [1080p].mkv                   → season 2, episode 5
+
+The series name is the text before ` - NN`, without the group, the year and
+the season. An absolute number becomes the N-th regular episode of the show
+on TMDB (specials excluded), so it works for shows numbered per season and
+for shows numbered absolutely within their seasons:
+`One Piece - 1071` → `S21E1071`. Without TMDB the file goes to season 1
+(season 0 is the specials for Plex). `absoluteEpisode` in the JSON result
+keeps the number of the file name.
+
+When TMDB does not have the episode (not listed yet, or a season that TMDB
+merges with another, like "Jujutsu Kaisen S2") the file needs a review
+(`needsReview`, see above) and is not touched.
+
+`x264`, `x265` and similar codec names are never taken as episode numbers.

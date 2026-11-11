@@ -50,8 +50,15 @@ type ParsedFile struct {
 	IDTag *IDTag
 	// Movie edition for Plex ({edition-...}), e.g. "Extended", "Director's Cut"
 	Edition string
+	// Anime style absolute episode number ("[Group] Show - 1071"), 0 if none.
+	// Season/Episode hold the TMDB numbering once mapped (see anime.go).
+	AbsoluteEpisode int
 
 	hasYearAsSeason bool
+	// Anime style season in the name ("Show S2 - 05"), checked on TMDB
+	animeSeason bool
+	// Series name of an anime style file name, without group, year and season
+	animeName string
 }
 
 func (p *ParsedFile) String() string {
@@ -188,7 +195,7 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 
 	if SupportedVideoExtensions[f.Extension] {
 		for _, match := range order {
-			res := matchers[match].FindStringSubmatch(filename)
+			res := findMatch(match, filename)
 			if len(res) > 0 {
 				switch match {
 				case "yearAsSeason":
@@ -217,14 +224,11 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 					f.Resolution = res[2]
 				case "groupAnime":
 					f.AnimeGroup = res[1]
-				case "episodeAnime":
-					if f.Episode == "" {
-						f.Episode = strings.Trim(res[0], " ")
-						f.Season = "00"
-					}
 				}
 			}
 		}
+		// Needs the year and the group found above
+		f.parseAnimeEpisode(filename)
 
 		cleanName := strings.Replace(filename, ".", " ", -1)
 
@@ -275,7 +279,7 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 			}
 
 			for _, match := range order {
-				res := matchers[match].FindStringSubmatch(cleanName)
+				res := findMatch(match, cleanName)
 				if len(res) > 0 {
 					// We don't need to remove Episode and Season information from movies, so let's exclude some properties
 					if (f.IsMovie && !ignoreMovie[match]) || f.IsSeries {
@@ -304,6 +308,10 @@ func NewParsedFile(filePath string, o ...Options) ParsedFile {
 				log.WithField("cleanName", cleanName).Debugln("Probably not Anime so cleaning a bit more.")
 				cleanName = regexp.MustCompile(`\s{2,}.*`).ReplaceAllString(cleanName, "")
 				cleanName = properTitleCase(cleanName) //cases.Title(language.English).String(cleanName)
+			}
+			// Anime style names: the series is what comes before " - NN"
+			if f.animeName != "" {
+				cleanName = f.animeName
 			}
 		}
 
@@ -420,6 +428,9 @@ func queryTmdb(p *ParsedFile) error {
 			if tv.Date != "" && p.Year == "" {
 				p.Year = strings.Split(tv.Date, "-")[0]
 			}
+
+			// "[Group] Show - 1071" → the TMDB season and episode
+			p.mapAnimeEpisode(tv.ID)
 
 			// IMPROVED: Retrieve Episode Name(s) for single or multiple episodes
 			seasonNum, err := strconv.Atoi(p.Season)

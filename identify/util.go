@@ -89,8 +89,8 @@ var matchers = map[string]*regexp.Regexp{
 	"hardcoded":    regexp.MustCompile("HC"),
 	"internal":     regexp.MustCompile("(?i)INTERNAL"),
 	"extended":     regexp.MustCompile("(EXTENDED(:?.CUT)?)"),
-	"episodeAnime": regexp.MustCompile("[-_ p.](\\d{2})[-_ (v\\[](\\d{2})?"),
-	"groupAnime":   regexp.MustCompile("^(\\[\\w*\\])\\s(.*)\\s-"),
+	"episodeAnime": animeEpisodeRegex, // see anime.go
+	"groupAnime":   regexp.MustCompile(`^\s*(\[[^\]]+\])`),
 }
 
 func initAgent() (agent *tmdb.TMDb) {

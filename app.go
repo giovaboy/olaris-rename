@@ -73,6 +73,9 @@ type ActionResult struct {
 
 	// Movie edition, written as {edition-...} by the default movie format
 	Edition string `json:"edition,omitempty"`
+	// Anime style absolute episode number of the file name ("[Group] Show - 1071");
+	// season and episode hold the TMDB numbering it was mapped to
+	AbsoluteEpisode int `json:"absoluteEpisode,omitempty"`
 	// Subtitle files next to the video, acted on together with it
 	Subtitles []SubtitleResult `json:"subtitles,omitempty"`
 }
@@ -300,28 +303,29 @@ func act(p identify.ParsedFile, targetFolder, action string) error {
 	// Collect JSON results instead of writing immediately
 	if *jsonOutput {
 		result := ActionResult{
-			ExternalID:   p.ExternalID,
-			ExternalName: p.ExternalName,
-			CleanName:    p.CleanName,
-			Year:         p.Year,
-			Season:       p.Season,
-			Episode:      p.Episode,
-			EpisodeName:  p.EpisodeName,
-			Source:       source,
-			Target:       targetLocation,
-			Action:       action,
-			IsMovie:      p.IsMovie,
-			IsSeries:     p.IsSeries,
-			Resolution:   p.Resolution,
-			Quality:      p.Quality,
-			TitleCheck:   p.TitleCheck,
-			TitleMatches: p.TitleMatches,
-			FileSeason:   p.FileSeason,
-			FileEpisode:  p.FileEpisode,
-			NeedsReview:  p.NeedsReview,
-			ReviewReason: p.ReviewReason,
-			Edition:      p.Edition,
-			Subtitles:    subtitles,
+			ExternalID:      p.ExternalID,
+			ExternalName:    p.ExternalName,
+			CleanName:       p.CleanName,
+			Year:            p.Year,
+			Season:          p.Season,
+			Episode:         p.Episode,
+			EpisodeName:     p.EpisodeName,
+			Source:          source,
+			Target:          targetLocation,
+			Action:          action,
+			IsMovie:         p.IsMovie,
+			IsSeries:        p.IsSeries,
+			Resolution:      p.Resolution,
+			Quality:         p.Quality,
+			TitleCheck:      p.TitleCheck,
+			TitleMatches:    p.TitleMatches,
+			FileSeason:      p.FileSeason,
+			FileEpisode:     p.FileEpisode,
+			NeedsReview:     p.NeedsReview,
+			ReviewReason:    p.ReviewReason,
+			Edition:         p.Edition,
+			AbsoluteEpisode: p.AbsoluteEpisode,
+			Subtitles:       subtitles,
 		}
 
 		// Thread-safe append to results array
